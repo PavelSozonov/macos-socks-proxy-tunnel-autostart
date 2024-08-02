@@ -30,7 +30,7 @@ cat <<EOL > "$PLIST_FILE"
 <plist version="1.0">
   <dict>
     <key>Label</key>
-    <string>tunnel-proxy-kz</string>
+    <string>tunnel-proxy</string>
     <key>ProgramArguments</key>
     <array>
        <string>/Users/$USER/scripts/tunnel-proxy.sh</string>
