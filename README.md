@@ -60,9 +60,9 @@ tail -f /Users/<your-user>/scripts/tunnel-proxy-stderr.log
 This setup ensures your SSH tunnel with SOCKS proxy is consistently running, providing a stable and persistent proxy connection.
 
 ## Using SOCKS proxy with a web browser
-This solution can be used with Chrome browser SwitchyOmega plugin (or anyone else).
+This solution can be used (and tested) with Chrome browser SwitchyOmega plugin (there are alternatives also).
 
-Configuration for SwitcyOmega plugin
+### Configuration for SwitcyOmega plugin
 1. Go to the plugin settings, create new profile and add proxy server
 ```
 Scheme: default
@@ -77,3 +77,4 @@ Condition Details: *.linkedin.com (or any domain which need to be served via SOC
 Profile: <your-profile-name> (name of the profile created in the first step)
 ```
 3. Click `Apply changes` button
+4. Click on the plugin icon (at the plugin bar in the browser) and choose `auto-switch` mode
