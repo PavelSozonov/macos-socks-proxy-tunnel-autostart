@@ -42,7 +42,7 @@ chmod +x /Users/<your-user>/scripts/tunnel-proxy.sh
 
 ### 3. Load the Launch Agent
 ```sh
-launchctl load /Users/<
+launchctl load /Users/<your-user>/Library/LaunchAgents/tunnel-proxy.plist
 ```
 
 ### 4. Verify the Tunnel
