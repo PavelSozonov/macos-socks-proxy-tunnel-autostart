@@ -53,7 +53,7 @@ tail -f /Users/<your-user>/scripts/tunnel-proxy-stderr.log
 ```
 
 ## Notes
-* Replace all <your-user>, <user>, and <your-foreign-server-address> placeholders with your actual username, SSH user, and the foreign server address, respectively.
+* Replace all <your-user>, <user>, and <server-address> placeholders with your actual username, SSH user, and the foreign server address, respectively.
 * Ensure your SSH key is correctly placed at /Users/<your-user>/.ssh/id_ed25519 and is accessible.
 * The tunnel will automatically start at system boot and will be kept alive by launchctl.
 

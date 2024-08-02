@@ -3,7 +3,7 @@
 # Variables - Replace these with your actual details
 USER="<your-user>"
 SSH_USER="<user>"
-FOREIGN_SERVER_ADDRESS="<your-foreign-server-address>"
+SERVER_ADDRESS="<server-address>"
 SCRIPTS_DIR="/Users/$USER/scripts"
 PLIST_DIR="/Users/$USER/Library/LaunchAgents"
 SCRIPT_FILE="$SCRIPTS_DIR/tunnel-proxy.sh"
@@ -17,7 +17,7 @@ mkdir -p "$PLIST_DIR"
 cat <<EOL > "$SCRIPT_FILE"
 #!/bin/sh
 
-ssh -D 8090 -q -C -N -i /Users/$USER/.ssh/id_ed25519 $SSH_USER@$FOREIGN_SERVER_ADDRESS
+ssh -D 8090 -q -C -N -i /Users/$USER/.ssh/id_ed25519 $SSH_USER@$SERVER_ADDRESS
 EOL
 
 # Make the script executable
