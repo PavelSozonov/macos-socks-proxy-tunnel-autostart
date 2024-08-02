@@ -6,9 +6,9 @@ The setup has been tested on macOS Sonoma 14.5  (Apple Silicon).
 
 ## Prerequisite
 
-Configure SSH connection to your Linux server via SSH key (out of scope of this instruction).
+Configure the SSH connection to your Linux server using an SSH key (this is out of scope of this document).
 
-Assume that key is located at `/Users/<your-user>/.ssh/id_ed25519`
+Assume that the private SSH key is located at `/Users/<your-user>/.ssh/id_ed25519`
 
 
 ## Files
@@ -73,8 +73,8 @@ Port: 8090
 2. Go to auto-switch section and add new rule(s)
 ```
 Condition Type: Host wildcard
-Condition Details: *.linkedin.com (or any domain which need to be served via SOCKS proxy)
-Profile: <your-profile-name> (name of the profile created in the first step)
+Condition Details: *.linkedin.com (or any domain that needs to be served via the SOCKS proxy)
+Profile: <your-profile-name> (the name of the profile created in the first step)
 ```
 3. Click `Apply changes` button
-4. Click on the plugin icon (at the plugin bar in the browser) and choose `auto-switch` mode
+4. Click on the plugin icon (in the plugin bar in the browser) and choose `auto-switch` mode
