@@ -1,8 +1,8 @@
 # Transform SOCKS proxy to HTTP proxy
 
-Tested on macOS Sonoma 14.5 (Apple Silicon)
-
 Useful, e.g., for Docker Desktop, whose free version does not support SOCKS proxy
+
+The setup has been tested on macOS Sonoma 14.5  (Apple Silicon).
 
 ### Prerequisite
 SOCKS proxy is accessible via socks://127.0.0.1:8090
@@ -52,6 +52,6 @@ tail -f /Users/<your-user>/scripts/pproxy-stderr.log
 ```
 
 ## Notes
-* Replace all <your-user> placeholders with your actual username.
+* Replace all `<your-user>` placeholders with your actual username.
 * The HTTP proxy will automatically start at system boot and will be kept alive by launchctl.
 * HTTP proxy will be accessible via address `http://127.0.0.1:8091`.

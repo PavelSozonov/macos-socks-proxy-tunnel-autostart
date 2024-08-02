@@ -2,7 +2,7 @@
 
 This guide provides instructions on how to configure an SSH tunnel with a SOCKS proxy to auto-start on macOS using `launchctl`.
 
-The setup has been tested on macOS Sonoma 14.5.
+The setup has been tested on macOS Sonoma 14.5  (Apple Silicon).
 
 ## Prerequisite
 
@@ -42,7 +42,7 @@ chmod +x /Users/<your-user>/scripts/tunnel-proxy.sh
 
 ### 3. Load the Launch Agent
 ```sh
-launchctl load /Users/<your-user>/Library/LaunchAgents/tunnel-proxy.plist
+launchctl load /Users/<
 ```
 
 ### 4. Verify the Tunnel
@@ -53,8 +53,8 @@ tail -f /Users/<your-user>/scripts/tunnel-proxy-stderr.log
 ```
 
 ## Notes
-* Replace all <your-user>, <user>, and <server-address> placeholders with your actual username, SSH user, and the foreign server address, respectively.
-* Ensure your SSH key is correctly placed at /Users/<your-user>/.ssh/id_ed25519 and is accessible.
+* Replace all `<your-user>`, `<user>`, and `<server-address>` placeholders with your actual username, SSH user, and the foreign server address, respectively.
+* Ensure your SSH key is correctly placed at `/Users/<your-user>/.ssh/id_ed25519` and is accessible.
 * The tunnel will automatically start at system boot and will be kept alive by launchctl.
 
 This setup ensures your SSH tunnel with SOCKS proxy is consistently running, providing a stable and persistent proxy connection.
