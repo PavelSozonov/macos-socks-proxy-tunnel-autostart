@@ -33,7 +33,7 @@ Use it carefully, before running set correct variable's values and check it's in
 
 ## Instructions
 
-### 1. Place the files to correct location
+### 1. Place the files to correct locations
 
 ### 2. Ensure the script is executable
 ```sh
@@ -53,7 +53,7 @@ tail -f /Users/<your-user>/scripts/tunnel-proxy-stderr.log
 ```
 
 ## Notes
-* Replace all `<your-user>`, `<user>`, and `<server-address>` placeholders with your actual username, SSH user, and the foreign server address, respectively.
+* Replace all `<your-user>`, `<user>`, and `<server-address>` placeholders with your actual username, SSH user, and the server address, respectively.
 * Ensure your SSH key is correctly placed at `/Users/<your-user>/.ssh/id_ed25519` and is accessible.
 * The tunnel will automatically start at system boot and will be kept alive by launchctl.
 
