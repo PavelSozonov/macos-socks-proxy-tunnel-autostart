@@ -88,8 +88,11 @@ cat > "$LAUNCH_AGENTS/tunnel-proxy.plist" << EOF
 </plist>
 EOF
 
-# Use modern launchctl commands (macOS 10.10+)
-launchctl bootout "$DOMAIN_TARGET/tunnel-proxy" 2>/dev/null || true
+# Load/reload the service
+if launchctl print "$DOMAIN_TARGET/tunnel-proxy" &>/dev/null; then
+    launchctl bootout "$DOMAIN_TARGET/tunnel-proxy" 2>/dev/null || true
+    sleep 1
+fi
 launchctl bootstrap "$DOMAIN_TARGET" "$LAUNCH_AGENTS/tunnel-proxy.plist"
 
 echo "✅ SOCKS proxy installed: socks5://127.0.0.1:$SOCKS_PORT"
@@ -98,17 +101,34 @@ echo "✅ SOCKS proxy installed: socks5://127.0.0.1:$SOCKS_PORT"
 if [ -n "$HTTP_PORT" ]; then
     echo "📦 Installing HTTP proxy (pproxy)..."
     
-    # Find pproxy or install it
-    PPROXY_PATH=$(which pproxy 2>/dev/null || echo "")
+    # Find pproxy in common locations
+    find_pproxy() {
+        command -v pproxy 2>/dev/null && return
+        for p in \
+            "$HOME/.local/bin/pproxy" \
+            "$(python3 -c 'import site; print(site.USER_BASE)' 2>/dev/null)/bin/pproxy" \
+            "/opt/homebrew/bin/pproxy" \
+            "/usr/local/bin/pproxy"; do
+            [ -x "$p" ] && echo "$p" && return
+        done
+    }
+    
+    PPROXY_PATH=$(find_pproxy)
+    
     if [ -z "$PPROXY_PATH" ]; then
-        echo "   Installing pproxy via pipx (recommended) or pip..."
+        echo "   Installing pproxy..."
         if command -v pipx &>/dev/null; then
-            pipx install pproxy
-            PPROXY_PATH="$HOME/.local/bin/pproxy"
+            pipx install pproxy --quiet
         else
-            pip3 install --user --break-system-packages pproxy 2>/dev/null || pip3 install --user pproxy
-            PPROXY_PATH=$(python3 -c "import site; print(site.USER_BASE)")/bin/pproxy
+            pip3 install --user --quiet --break-system-packages pproxy 2>/dev/null || \
+            pip3 install --user --quiet pproxy
         fi
+        PPROXY_PATH=$(find_pproxy)
+    fi
+    
+    if [ -z "$PPROXY_PATH" ] || [ ! -x "$PPROXY_PATH" ]; then
+        echo "❌ Failed to find pproxy after installation"
+        exit 1
     fi
 
     cat > "$SCRIPTS_DIR/pproxy.sh" << EOF
@@ -144,7 +164,10 @@ EOF
 </plist>
 EOF
 
-    launchctl bootout "$DOMAIN_TARGET/pproxy" 2>/dev/null || true
+    if launchctl print "$DOMAIN_TARGET/pproxy" &>/dev/null; then
+        launchctl bootout "$DOMAIN_TARGET/pproxy" 2>/dev/null || true
+        sleep 1
+    fi
     launchctl bootstrap "$DOMAIN_TARGET" "$LAUNCH_AGENTS/pproxy.plist"
     
     echo "✅ HTTP proxy installed: http://127.0.0.1:$HTTP_PORT"
