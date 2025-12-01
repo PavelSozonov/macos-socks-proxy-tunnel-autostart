@@ -1,80 +1,97 @@
-# Auto-Starting SSH Tunnel with SOCKS Proxy on macOS using launchctl
+# macOS SSH SOCKS Proxy Auto-Start
 
-This guide provides instructions on how to configure an SSH tunnel with a SOCKS proxy to auto-start on macOS using `launchctl`.
+Auto-starting SSH tunnel with SOCKS proxy on macOS via launchctl.
 
-The setup has been tested on macOS Sonoma 14.5  (Apple Silicon).
+Tested on macOS Sequoia 15+ / darwin 25+ (Apple Silicon).
 
-## Prerequisite
+## Quick Setup
 
-Configure the SSH connection to your Linux server using an SSH key (this is out of scope of this document).
+```bash
+# 1. Clone the repo
+git clone https://github.com/your/repo.git && cd repo
 
-Assume that the private SSH key is located at `/Users/<your-user>/.ssh/id_ed25519`
+# 2. Create .env with your settings
+cp .env.template .env
+nano .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
 
-
-## Files
-
-### 1. `tunnel-proxy.sh`
-
-This script establishes the SSH tunnel. 
-
-Save it at `/Users/<your-user>/scripts/tunnel-proxy.sh`.
-
-### 2. `tunnel-proxy.plist`
-
-This property list file configures launchctl to manage the SSH tunnel script. 
-
-Save it at `/Users/<your-user>/Library/LaunchAgents/tunnel-proxy.plist`.
-
-### 3. `bootstrap.sh`
-
-This script automatically performs all manual actions described in this instruction.
-
-Use it carefully, before running set correct variable's values and check it's instructions. 
-
-## Instructions
-
-### 1. Place the files to correct locations
-
-### 2. Ensure the script is executable
-```sh
-chmod +x /Users/<your-user>/scripts/tunnel-proxy.sh
+# 3. Run installation
+./install.sh
 ```
 
-### 3. Load the Launch Agent
-```sh
-launchctl load /Users/<your-user>/Library/LaunchAgents/tunnel-proxy.plist
+## Requirements
+
+- SSH key configured for passwordless connection to server
+- Default SSH key path: `~/.ssh/id_ed25519`
+
+## Configuration (.env)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SSH_USER` | SSH username | `root` |
+| `SSH_SERVER` | Server address | `my-server.com` |
+| `SSH_KEY_FILE` | Path to SSH private key | `~/.ssh/id_ed25519` |
+| `SOCKS_PORT` | SOCKS proxy port | `8090` |
+| `HTTP_PORT` | HTTP proxy port (optional) | `8091` |
+
+## Usage
+
+After installation, the proxy automatically starts on system boot.
+
+**SOCKS proxy:** `socks5://127.0.0.1:8090`
+
+**HTTP proxy** (if enabled): `http://127.0.0.1:8091`
+
+### Useful Commands
+
+```bash
+# Status
+launchctl print gui/$(id -u)/tunnel-proxy
+
+# Logs
+tail -f ~/scripts/tunnel-proxy.log
+
+# Restart
+launchctl kickstart -k gui/$(id -u)/tunnel-proxy
+
+# Stop
+launchctl kill TERM gui/$(id -u)/tunnel-proxy
 ```
 
-### 4. Verify the Tunnel
-To verify if the tunnel is running, check the log files specified in the .plist file.
-```sh
-tail -f /Users/<your-user>/scripts/tunnel-proxy.log
-tail -f /Users/<your-user>/scripts/tunnel-proxy-stderr.log
+## Uninstall
+
+```bash
+./uninstall.sh
 ```
 
-## Notes
-* Replace all `<your-user>`, `<user>`, and `<server-address>` placeholders with your actual username, SSH user, and the server address, respectively.
-* Ensure your SSH key is correctly placed at `/Users/<your-user>/.ssh/id_ed25519` and is accessible.
-* The tunnel will automatically start at system boot and will be kept alive by launchctl.
+## Browser Setup
 
-This setup ensures your SSH tunnel with SOCKS proxy is consistently running, providing a stable and persistent proxy connection.
+Recommended: **SwitchyOmega** extension for Chrome/Firefox:
 
-## Using SOCKS proxy with a web browser
-This solution can be used (and tested) with Chrome browser SwitchyOmega plugin (there are alternatives also).
+1. Create a profile with settings:
+   - Protocol: `SOCKS5`
+   - Server: `127.0.0.1`
+   - Port: `8090`
 
-### Configuration for SwitcyOmega plugin
-1. Go to the plugin settings, create new profile and add proxy server
-```
-Scheme: default
-Protocol: SOCKS4
-Server: 127.0.0.1
-Port: 8090
-```
-2. Go to auto-switch section and add new rule(s)
-```
-Condition Type: Host wildcard
-Condition Details: *.linkedin.com (or any domain that needs to be served via the SOCKS proxy)
-Profile: <your-profile-name> (the name of the profile created in the first step)
-```
-3. Click `Apply changes` button
-4. Click on the plugin icon (in the plugin bar in the browser) and choose `auto-switch` mode
+2. In auto-switch, add rules for desired domains
+
+## HTTP Proxy (Optional)
+
+Useful for apps without SOCKS support (e.g., Docker Desktop free version).
+
+Just set `HTTP_PORT=8091` in `.env` before installation.
+
+## Resilience & Auto-Recovery
+
+The tunnel is configured for maximum reliability:
+
+**SSH options:**
+- `ServerAliveInterval=30` — send keepalive every 30 seconds
+- `ServerAliveCountMax=2` — disconnect after 2 failed keepalives (~1 min max to detect dead connection)
+- `TCPKeepAlive=yes` — enable TCP-level keepalive
+- `ConnectTimeout=10` — fail fast if server unreachable
+- `ExitOnForwardFailure=yes` — exit if port binding fails
+
+**launchctl options:**
+- `KeepAlive.SuccessfulExit=false` — restart on any exit (crash or connection loss)
+- `KeepAlive.NetworkState=true` — restart when network becomes available
+- `ThrottleInterval=5` — wait 5 seconds between restart attempts
