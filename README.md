@@ -7,15 +7,12 @@ Tested on macOS Sequoia 15+ / darwin 25+ (Apple Silicon).
 ## Quick Setup
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/your/repo.git && cd repo
-
-# 2. Create .env with your settings
+# 1. Create .env with your settings
 cp .env.template .env
-nano .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
+vim .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
 
-# 3. Run installation
-./install.sh
+# 2. Run installation
+bash ./install.sh
 ```
 
 ## Requirements
