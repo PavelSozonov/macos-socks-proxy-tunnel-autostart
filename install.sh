@@ -181,4 +181,3 @@ echo "  Check status:  launchctl print gui/\$(id -u)/tunnel-proxy"
 echo "  View logs:     tail -f ~/scripts/tunnel-proxy.log"
 echo "  Stop:          launchctl kill TERM gui/\$(id -u)/tunnel-proxy"
 echo "  Restart:       launchctl kickstart -k gui/\$(id -u)/tunnel-proxy"
-
