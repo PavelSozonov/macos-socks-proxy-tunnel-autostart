@@ -104,6 +104,5 @@ Both services are configured for maximum reliability via launchd.
 - `ExitOnForwardFailure=yes` — exit if port binding fails
 
 **launchctl options (both tunnel and gost):**
-- `KeepAlive.SuccessfulExit=false` — restart on any non-zero exit (crash or connection loss)
-- `KeepAlive.NetworkState=true` — only restart when network is available
+- `KeepAlive.NetworkState=true` — always restart when network is available (regardless of exit code)
 - `ThrottleInterval=5` — wait 5 seconds between restart attempts
