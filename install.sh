@@ -3,23 +3,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Load config
-if [ ! -f "$SCRIPT_DIR/.env" ]; then
-    echo "❌ .env not found. Copy .env.template to .env and fill in your settings:"
-    echo "   cp .env.template .env"
-    exit 1
-fi
-source "$SCRIPT_DIR/.env"
-
-# Validate required settings
-if [ -z "$SSH_USER" ] || [ -z "$SSH_SERVER" ]; then
-    echo "❌ SSH_USER and SSH_SERVER must be set in .env"
-    exit 1
+# Load config (optional — defaults will be used if .env is missing)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 fi
 
-# Expand ~ in path
-SSH_KEY_FILE="${SSH_KEY_FILE/#\~/$HOME}"
+# Defaults
 SOCKS_PORT="${SOCKS_PORT:-8090}"
+SSH_KEY_FILE="${SSH_KEY_FILE:-~/.ssh/id_ed25519}"
+SSH_KEY_FILE="${SSH_KEY_FILE/#\~/$HOME}"
 
 SCRIPTS_DIR="$HOME/scripts"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
@@ -28,6 +20,9 @@ DOMAIN_TARGET="gui/$(id -u)"
 mkdir -p "$SCRIPTS_DIR" "$LAUNCH_AGENTS"
 
 # --- SOCKS Tunnel ---
+if [ -z "$SSH_USER" ] || [ -z "$SSH_SERVER" ]; then
+    echo "⚠️  SSH_USER/SSH_SERVER not set — skipping SOCKS tunnel (set them in .env)"
+else
 echo "📦 Installing SOCKS proxy tunnel..."
 
 cat > "$SCRIPTS_DIR/tunnel-proxy.sh" << 'SCRIPT_EOF'
@@ -96,6 +91,7 @@ fi
 launchctl bootstrap "$DOMAIN_TARGET" "$LAUNCH_AGENTS/tunnel-proxy.plist"
 
 echo "✅ SOCKS proxy installed: socks5://127.0.0.1:$SOCKS_PORT"
+fi
 
 # --- Optional: HTTP Proxy (pproxy) ---
 if [ -n "$HTTP_PORT" ]; then
@@ -181,3 +177,5 @@ echo "  Check status:  launchctl print gui/\$(id -u)/tunnel-proxy"
 echo "  View logs:     tail -f ~/scripts/tunnel-proxy.log"
 echo "  Stop:          launchctl kill TERM gui/\$(id -u)/tunnel-proxy"
 echo "  Restart:       launchctl kickstart -k gui/\$(id -u)/tunnel-proxy"
+echo ""
+echo "For gost HTTP proxy, run: ./install-gost.sh"
