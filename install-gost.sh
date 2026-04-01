@@ -61,8 +61,6 @@ cat > "$LAUNCH_AGENTS/gost-proxy.plist" << EOF
     <true/>
     <key>KeepAlive</key>
     <dict>
-        <key>SuccessfulExit</key>
-        <false/>
         <key>NetworkState</key>
         <true/>
     </dict>
