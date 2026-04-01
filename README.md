@@ -11,54 +11,75 @@ Tested on macOS Sequoia 15+ / darwin 25+ (Apple Silicon).
 cp .env.template .env
 vim .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
 
-# 2. Run installation
+# 2. Install SOCKS tunnel
 bash ./install.sh
+
+# 3. (Optional) Install HTTP proxy bridge via gost
+bash ./install-gost.sh
 ```
+
+`.env` is optional — both scripts use sensible defaults (`SOCKS_PORT=8090`, `GOST_HTTP_PORT=8118`). The SOCKS tunnel requires `SSH_USER` and `SSH_SERVER` to be set; gost works out of the box.
 
 ## Requirements
 
 - SSH key configured for passwordless connection to server
 - Default SSH key path: `~/.ssh/id_ed25519`
+- For HTTP proxy: `brew install gost`
 
 ## Configuration (.env)
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |----------|-------------|---------|
-| `SSH_USER` | SSH username | `root` |
-| `SSH_SERVER` | Server address | `my-server.com` |
+| `SSH_USER` | SSH username | *(required for tunnel)* |
+| `SSH_SERVER` | Server address | *(required for tunnel)* |
 | `SSH_KEY_FILE` | Path to SSH private key | `~/.ssh/id_ed25519` |
 | `SOCKS_PORT` | SOCKS proxy port | `8090` |
-| `HTTP_PORT` | HTTP proxy port (optional) | `8091` |
+| `GOST_HTTP_PORT` | HTTP proxy port (gost) | `8118` |
 
 ## Usage
 
-After installation, the proxy automatically starts on system boot.
+After installation, services automatically start on system boot.
 
 **SOCKS proxy:** `socks5://127.0.0.1:8090`
 
-**HTTP proxy** (if enabled): `http://127.0.0.1:8091`
+**HTTP proxy** (if gost installed): `http://127.0.0.1:8118`
 
 ### Useful Commands
 
 ```bash
-# Status
-launchctl print gui/$(id -u)/tunnel-proxy
+# --- SOCKS tunnel ---
+launchctl print gui/$(id -u)/tunnel-proxy     # status
+tail -f ~/scripts/tunnel-proxy.log             # logs
+launchctl kickstart -k gui/$(id -u)/tunnel-proxy  # restart
+launchctl kill TERM gui/$(id -u)/tunnel-proxy     # stop
 
-# Logs
-tail -f ~/scripts/tunnel-proxy.log
-
-# Restart
-launchctl kickstart -k gui/$(id -u)/tunnel-proxy
-
-# Stop
-launchctl kill TERM gui/$(id -u)/tunnel-proxy
+# --- gost HTTP proxy ---
+launchctl print gui/$(id -u)/gost-proxy       # status
+tail -f ~/scripts/gost-proxy.log              # logs
+launchctl kickstart -k gui/$(id -u)/gost-proxy   # restart
+launchctl kill TERM gui/$(id -u)/gost-proxy      # stop
 ```
 
 ## Uninstall
 
 ```bash
-./uninstall.sh
+./uninstall.sh       # removes SOCKS tunnel
+./uninstall-gost.sh  # removes gost HTTP proxy
 ```
+
+## HTTP Proxy (gost)
+
+[gost](https://github.com/go-gost/gost) bridges HTTP to SOCKS for apps that don't support SOCKS natively (e.g., Docker Desktop free version).
+
+It runs as a separate launchd service and can be installed/uninstalled independently from the SOCKS tunnel:
+
+```bash
+brew install gost        # pre-requisite
+bash ./install-gost.sh   # install & start
+bash ./uninstall-gost.sh # remove
+```
+
+The proxy chain: `http://127.0.0.1:8118` -> `socks5://127.0.0.1:8090` -> SSH tunnel -> internet.
 
 ## Browser Setup
 
@@ -71,15 +92,9 @@ Recommended: **SwitchyOmega** extension for Chrome/Firefox:
 
 2. In auto-switch, add rules for desired domains
 
-## HTTP Proxy (Optional)
-
-Useful for apps without SOCKS support (e.g., Docker Desktop free version).
-
-Just set `HTTP_PORT=8091` in `.env` before installation.
-
 ## Resilience & Auto-Recovery
 
-The tunnel is configured for maximum reliability:
+Both services are configured for maximum reliability via launchd.
 
 **SSH options:**
 - `ServerAliveInterval=30` — send keepalive every 30 seconds
@@ -88,7 +103,7 @@ The tunnel is configured for maximum reliability:
 - `ConnectTimeout=10` — fail fast if server unreachable
 - `ExitOnForwardFailure=yes` — exit if port binding fails
 
-**launchctl options:**
-- `KeepAlive.SuccessfulExit=false` — restart on any exit (crash or connection loss)
-- `KeepAlive.NetworkState=true` — restart when network becomes available
+**launchctl options (both tunnel and gost):**
+- `KeepAlive.SuccessfulExit=false` — restart on any non-zero exit (crash or connection loss)
+- `KeepAlive.NetworkState=true` — only restart when network is available
 - `ThrottleInterval=5` — wait 5 seconds between restart attempts
