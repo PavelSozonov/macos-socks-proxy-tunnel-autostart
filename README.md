@@ -11,15 +11,20 @@ Tested on macOS Sequoia 15+ / darwin 25+ (Apple Silicon).
 cp .env.template .env
 vim .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
 
-# 2. Install SOCKS tunnel
-bash ./install.sh
-
-# 3. (Optional) Install HTTP proxy bridge via gost
-bash ./install-gost.sh
-
-# 4. (Recommended) Install watchdog — auto-heals a stuck tunnel (e.g. after VPN on/off)
-bash ./install-watchdog.sh
+# 2. Install everything: SOCKS tunnel + gost HTTP bridge + watchdog
+make install
 ```
+
+Or pick the parts you need:
+
+```bash
+make install-tunnel     # SSH SOCKS tunnel
+make install-gost       # HTTP-to-SOCKS bridge (requires: brew install gost)
+make install-watchdog   # auto-heals a stuck tunnel (e.g. after VPN on/off)
+make help               # all targets
+```
+
+The `install-*.sh` / `uninstall-*.sh` scripts can also be run directly.
 
 `.env` is optional — both scripts use sensible defaults (`SOCKS_PORT=8090`, `GOST_HTTP_PORT=8118`). The SOCKS tunnel requires `SSH_USER` and `SSH_SERVER` to be set; gost works out of the box.
 
@@ -54,6 +59,15 @@ After installation, services automatically start on system boot.
 ### Useful Commands
 
 ```bash
+make status    # state of all services
+make logs      # tail all logs
+make restart   # restart the SSH tunnel now
+make check     # run the watchdog health check once
+```
+
+Under the hood (per service):
+
+```bash
 # --- SOCKS tunnel ---
 launchctl print gui/$(id -u)/tunnel-proxy     # status
 tail -f ~/scripts/tunnel-proxy.log             # logs
@@ -75,9 +89,10 @@ launchctl kickstart gui/$(id -u)/tunnel-watchdog  # run check now
 ## Uninstall
 
 ```bash
-./uninstall.sh       # removes SOCKS tunnel
-./uninstall-gost.sh  # removes gost HTTP proxy
-./uninstall-watchdog.sh  # removes watchdog
+make uninstall            # removes everything
+make uninstall-tunnel     # or individually
+make uninstall-gost
+make uninstall-watchdog
 ```
 
 ## HTTP Proxy (gost)
@@ -87,9 +102,9 @@ launchctl kickstart gui/$(id -u)/tunnel-watchdog  # run check now
 It runs as a separate launchd service and can be installed/uninstalled independently from the SOCKS tunnel:
 
 ```bash
-brew install gost        # pre-requisite
-bash ./install-gost.sh   # install & start
-bash ./uninstall-gost.sh # remove
+brew install gost      # pre-requisite
+make install-gost      # install & start
+make uninstall-gost    # remove
 ```
 
 The proxy chain: `http://127.0.0.1:8118` -> `socks5://127.0.0.1:8090` -> SSH tunnel -> internet.
@@ -107,8 +122,8 @@ curl --socks5-hostname 127.0.0.1:$SOCKS_PORT -m $WATCHDOG_TIMEOUT -fsS $WATCHDOG
 After `WATCHDOG_FAILURES` consecutive failures it runs `launchctl kickstart -k` on `tunnel-proxy`. gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
 
 ```bash
-bash ./install-watchdog.sh    # install & start
-bash ./uninstall-watchdog.sh  # remove
+make install-watchdog    # install & start
+make uninstall-watchdog  # remove
 ```
 
 ## Browser Setup
