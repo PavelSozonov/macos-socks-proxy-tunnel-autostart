@@ -16,6 +16,9 @@ bash ./install.sh
 
 # 3. (Optional) Install HTTP proxy bridge via gost
 bash ./install-gost.sh
+
+# 4. (Recommended) Install watchdog — auto-heals a stuck tunnel (e.g. after VPN on/off)
+bash ./install-watchdog.sh
 ```
 
 `.env` is optional — both scripts use sensible defaults (`SOCKS_PORT=8090`, `GOST_HTTP_PORT=8118`). The SOCKS tunnel requires `SSH_USER` and `SSH_SERVER` to be set; gost works out of the box.
@@ -35,6 +38,10 @@ bash ./install-gost.sh
 | `SSH_KEY_FILE` | Path to SSH private key | `~/.ssh/id_ed25519` |
 | `SOCKS_PORT` | SOCKS proxy port | `8090` |
 | `GOST_HTTP_PORT` | HTTP proxy port (gost) | `8118` |
+| `WATCHDOG_INTERVAL` | Seconds between watchdog health checks | `30` |
+| `WATCHDOG_URL` | URL fetched through the SOCKS proxy as a health check | `https://www.google.com/generate_204` |
+| `WATCHDOG_FAILURES` | Consecutive failures before restarting the tunnel | `2` |
+| `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `10` |
 
 ## Usage
 
@@ -58,6 +65,11 @@ launchctl print gui/$(id -u)/gost-proxy       # status
 tail -f ~/scripts/gost-proxy.log              # logs
 launchctl kickstart -k gui/$(id -u)/gost-proxy   # restart
 launchctl kill TERM gui/$(id -u)/gost-proxy      # stop
+
+# --- watchdog ---
+launchctl print gui/$(id -u)/tunnel-watchdog   # status
+tail -f ~/scripts/tunnel-watchdog.log          # logs (restarts only)
+launchctl kickstart gui/$(id -u)/tunnel-watchdog  # run check now
 ```
 
 ## Uninstall
@@ -65,6 +77,7 @@ launchctl kill TERM gui/$(id -u)/gost-proxy      # stop
 ```bash
 ./uninstall.sh       # removes SOCKS tunnel
 ./uninstall-gost.sh  # removes gost HTTP proxy
+./uninstall-watchdog.sh  # removes watchdog
 ```
 
 ## HTTP Proxy (gost)
@@ -80,6 +93,23 @@ bash ./uninstall-gost.sh # remove
 ```
 
 The proxy chain: `http://127.0.0.1:8118` -> `socks5://127.0.0.1:8090` -> SSH tunnel -> internet.
+
+## Watchdog
+
+launchd only restarts the tunnel when the `ssh` process **exits**. After toggling a VPN (or otherwise changing routes) the process often stays alive while the connection is half-dead, so SOCKS traffic silently stops and launchd sees nothing wrong.
+
+The watchdog is a separate launchd agent that runs every `WATCHDOG_INTERVAL` seconds and performs a real end-to-end check:
+
+```
+curl --socks5-hostname 127.0.0.1:$SOCKS_PORT -m $WATCHDOG_TIMEOUT -fsS $WATCHDOG_URL
+```
+
+After `WATCHDOG_FAILURES` consecutive failures it runs `launchctl kickstart -k` on `tunnel-proxy`. gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
+
+```bash
+bash ./install-watchdog.sh    # install & start
+bash ./uninstall-watchdog.sh  # remove
+```
 
 ## Browser Setup
 
@@ -106,3 +136,5 @@ Both services are configured for maximum reliability via launchd.
 **launchctl options (both tunnel and gost):**
 - `KeepAlive.NetworkState=true` — always restart when network is available (regardless of exit code)
 - `ThrottleInterval=5` — wait 5 seconds between restart attempts
+
+**Watchdog (optional, see above):** end-to-end check through the proxy that restarts a tunnel whose process is alive but no longer passes traffic.
