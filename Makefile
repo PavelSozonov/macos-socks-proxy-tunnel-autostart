@@ -16,24 +16,24 @@ help: ## Show this help
 install: install-tunnel install-gost install-watchdog ## Install everything (tunnel, gost, watchdog)
 
 install-tunnel: ## Install SSH SOCKS tunnel
-	@bash ./install.sh
+	@bash scripts/install-tunnel.sh
 
 install-gost: ## Install gost HTTP-to-SOCKS bridge (requires: brew install gost)
-	@bash ./install-gost.sh
+	@bash scripts/install-gost.sh
 
 install-watchdog: ## Install tunnel watchdog
-	@bash ./install-watchdog.sh
+	@bash scripts/install-watchdog.sh
 
 uninstall: uninstall-watchdog uninstall-gost uninstall-tunnel ## Uninstall everything
 
 uninstall-tunnel: ## Uninstall SSH SOCKS tunnel
-	@bash ./uninstall.sh
+	@bash scripts/uninstall-tunnel.sh
 
 uninstall-gost: ## Uninstall gost HTTP proxy
-	@bash ./uninstall-gost.sh
+	@bash scripts/uninstall-gost.sh
 
 uninstall-watchdog: ## Uninstall tunnel watchdog
-	@bash ./uninstall-watchdog.sh
+	@bash scripts/uninstall-watchdog.sh
 
 status: ## Show state of all services
 	@for s in $(SERVICES); do \

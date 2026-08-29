@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Load config (optional — defaults will be used if .env is missing)
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
+if [ -f "$REPO_DIR/.env" ]; then
+    source "$REPO_DIR/.env"
 fi
 
 # Defaults
@@ -100,4 +100,4 @@ echo "  View logs:     tail -f ~/scripts/tunnel-proxy.log"
 echo "  Stop:          launchctl kill TERM gui/\$(id -u)/tunnel-proxy"
 echo "  Restart:       launchctl kickstart -k gui/\$(id -u)/tunnel-proxy"
 echo ""
-echo "For gost HTTP proxy, run: ./install-gost.sh"
+echo "For gost HTTP proxy, run: make install-gost"
