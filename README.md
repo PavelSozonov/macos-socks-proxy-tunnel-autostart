@@ -20,6 +20,8 @@ Requires only macOS built-ins (`ssh`, `launchd`, `curl`) plus an SSH key that lo
 ## Quick Setup
 
 ```bash
+# 0. On the server: create a forward-only SSH user (recommended, see docs/server-setup.md)
+
 # 1. Create .env with your settings
 cp .env.template .env
 vim .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
@@ -43,7 +45,7 @@ The underlying scripts live in `scripts/` and can also be run directly.
 
 ## Requirements
 
-- SSH key configured for passwordless connection to server
+- SSH key configured for passwordless connection to server — ideally a dedicated account that can only forward ports, see [docs/server-setup.md](docs/server-setup.md)
 - Default SSH key path: `~/.ssh/id_ed25519`
 - For HTTP proxy: `brew install gost`
 
