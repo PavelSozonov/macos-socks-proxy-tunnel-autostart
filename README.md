@@ -1,8 +1,21 @@
 # macOS SSH SOCKS Proxy Auto-Start
 
-Auto-starting SSH tunnel with SOCKS proxy on macOS via launchctl.
+Set up an SSH SOCKS proxy on your Mac **once** and never touch it again.
 
-Tested on macOS Sequoia 15+ / darwin 25+ (Apple Silicon).
+`ssh -D` is easy; keeping it alive is not. The tunnel dies on reboot, sleep, Wi-Fi changes and VPN toggles — and often stays *half-dead*: the `ssh` process is still running but no traffic goes through, so nothing restarts it. This repo turns `ssh -D` into a self-healing background service:
+
+- **Starts on login, restarts on failure** — managed by launchd, no terminal window to keep open
+- **Detects half-dead tunnels** — a watchdog sends real traffic through the proxy and restarts the tunnel when it stops passing (recovery in ~15s; slower on battery to save power)
+- **Works with apps that only speak HTTP** — optional [gost](https://github.com/go-gost/gost) bridge exposes the same tunnel as an HTTP proxy (e.g. for Docker Desktop)
+- **No personal data in the repo** — server, user, key and ports live in a git-ignored `.env`
+
+```
+app ── socks5://127.0.0.1:8090 ──▶ ssh -D ──▶ your server ──▶ internet
+app ── http://127.0.0.1:8118 ──▶ gost ──┘
+watchdog ── curl through socks5 every 3s ──▶ no response twice? restart ssh -D
+```
+
+Requires only macOS built-ins (`ssh`, `launchd`, `curl`) plus an SSH key that logs into your server without a password. Tested on macOS Sequoia 15+ (Apple Silicon).
 
 ## Quick Setup
 
@@ -26,7 +39,7 @@ make help               # all targets
 
 The underlying scripts live in `scripts/` and can also be run directly.
 
-`.env` is optional — both scripts use sensible defaults (`SOCKS_PORT=8090`, `GOST_HTTP_PORT=8118`). The SOCKS tunnel requires `SSH_USER` and `SSH_SERVER` to be set; gost works out of the box.
+`.env` is optional — all scripts use sensible defaults (`SOCKS_PORT=8090`, `GOST_HTTP_PORT=8118`). The SOCKS tunnel requires `SSH_USER` and `SSH_SERVER` to be set; gost works out of the box.
 
 ## Requirements
 
