@@ -51,5 +51,5 @@ logs: ## Tail logs of all installed services
 restart: ## Restart the SSH tunnel now
 	@launchctl kickstart -k $(DOMAIN)/tunnel-proxy && echo "tunnel-proxy restarted"
 
-check: ## Run the watchdog health check once
-	@launchctl kickstart $(DOMAIN)/tunnel-watchdog && echo "watchdog check triggered (see: make logs)"
+check: ## Run the health check through the SOCKS proxy once
+	@. ./.env 2>/dev/null; curl --socks5-hostname 127.0.0.1:$${SOCKS_PORT:-8090} -m $${WATCHDOG_TIMEOUT:-3} -fsS -o /dev/null $${WATCHDOG_URL:-https://www.google.com/generate_204} && echo "tunnel OK"
