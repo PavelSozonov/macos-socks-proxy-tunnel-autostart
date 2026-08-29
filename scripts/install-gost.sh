@@ -4,11 +4,11 @@ set -e
 # Standalone installer for gost HTTP-to-SOCKS proxy bridge
 # Pre-requisite: brew install gost
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Load config (optional — defaults will be used if .env is missing)
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
+if [ -f "$REPO_DIR/.env" ]; then
+    source "$REPO_DIR/.env"
 fi
 
 # Defaults

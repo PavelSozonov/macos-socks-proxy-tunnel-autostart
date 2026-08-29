@@ -7,11 +7,11 @@ set -e
 # This catches "half-dead" SSH sessions (e.g. after VPN on/off) that launchd
 # cannot detect because the ssh process is still alive.
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Load config (optional — defaults will be used if .env is missing)
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
+if [ -f "$REPO_DIR/.env" ]; then
+    source "$REPO_DIR/.env"
 fi
 
 # Defaults

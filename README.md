@@ -24,7 +24,7 @@ make install-watchdog   # auto-heals a stuck tunnel (e.g. after VPN on/off)
 make help               # all targets
 ```
 
-The `install-*.sh` / `uninstall-*.sh` scripts can also be run directly.
+The underlying scripts live in `scripts/` and can also be run directly.
 
 `.env` is optional — both scripts use sensible defaults (`SOCKS_PORT=8090`, `GOST_HTTP_PORT=8118`). The SOCKS tunnel requires `SSH_USER` and `SSH_SERVER` to be set; gost works out of the box.
 
