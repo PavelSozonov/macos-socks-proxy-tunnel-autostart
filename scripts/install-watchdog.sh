@@ -17,6 +17,7 @@ fi
 # Defaults
 SOCKS_PORT="${SOCKS_PORT:-8090}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-3}"
+WATCHDOG_INTERVAL_BATTERY="${WATCHDOG_INTERVAL_BATTERY:-60}"
 WATCHDOG_URL="${WATCHDOG_URL:-https://www.google.com/generate_204}"
 WATCHDOG_FAILURES="${WATCHDOG_FAILURES:-2}"
 WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-3}"
@@ -39,7 +40,8 @@ cat > "$SCRIPTS_DIR/tunnel-watchdog.sh" << 'SCRIPT_EOF'
 
 SOCKS_PORT="SOCKS_PORT_PLACEHOLDER"
 URL="WATCHDOG_URL_PLACEHOLDER"
-INTERVAL="WATCHDOG_INTERVAL_PLACEHOLDER"
+INTERVAL_AC="WATCHDOG_INTERVAL_PLACEHOLDER"
+INTERVAL_BATTERY="WATCHDOG_INTERVAL_BATTERY_PLACEHOLDER"
 MAX_FAILURES="WATCHDOG_FAILURES_PLACEHOLDER"
 TIMEOUT="WATCHDOG_TIMEOUT_PLACEHOLDER"
 
@@ -49,18 +51,26 @@ GRACE=10
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*"; }
 
+# Check less often on battery to let the radio/SoC idle
+interval() {
+    case "$(pmset -g batt 2>/dev/null | head -1)" in
+        *Battery*) echo "$INTERVAL_BATTERY" ;;
+        *)         echo "$INTERVAL_AC" ;;
+    esac
+}
+
 failures=0
 while true; do
     # Nothing to watch if the tunnel service is not loaded
     if ! launchctl print "$DOMAIN_TARGET/tunnel-proxy" >/dev/null 2>&1; then
         failures=0
-        sleep "$INTERVAL"
+        sleep "$(interval)"
         continue
     fi
 
     if curl --socks5-hostname "127.0.0.1:$SOCKS_PORT" -m "$TIMEOUT" -fsS -o /dev/null "$URL"; then
         failures=0
-        sleep "$INTERVAL"
+        sleep "$(interval)"
         continue
     fi
 
@@ -73,13 +83,14 @@ while true; do
         failures=0
         sleep "$GRACE"
     else
-        sleep "$INTERVAL"
+        sleep "$(interval)"
     fi
 done
 SCRIPT_EOF
 
 sed -i '' "s|SOCKS_PORT_PLACEHOLDER|$SOCKS_PORT|g" "$SCRIPTS_DIR/tunnel-watchdog.sh"
 sed -i '' "s|WATCHDOG_URL_PLACEHOLDER|$WATCHDOG_URL|g" "$SCRIPTS_DIR/tunnel-watchdog.sh"
+sed -i '' "s|WATCHDOG_INTERVAL_BATTERY_PLACEHOLDER|$WATCHDOG_INTERVAL_BATTERY|g" "$SCRIPTS_DIR/tunnel-watchdog.sh"
 sed -i '' "s|WATCHDOG_INTERVAL_PLACEHOLDER|$WATCHDOG_INTERVAL|g" "$SCRIPTS_DIR/tunnel-watchdog.sh"
 sed -i '' "s|WATCHDOG_FAILURES_PLACEHOLDER|$WATCHDOG_FAILURES|g" "$SCRIPTS_DIR/tunnel-watchdog.sh"
 sed -i '' "s|WATCHDOG_TIMEOUT_PLACEHOLDER|$WATCHDOG_TIMEOUT|g" "$SCRIPTS_DIR/tunnel-watchdog.sh"
@@ -119,7 +130,7 @@ if launchctl print "$DOMAIN_TARGET/tunnel-watchdog" &>/dev/null; then
 fi
 launchctl bootstrap "$DOMAIN_TARGET" "$LAUNCH_AGENTS/tunnel-watchdog.plist"
 
-echo "✅ Watchdog installed: checks $WATCHDOG_URL via socks5://127.0.0.1:$SOCKS_PORT every ${WATCHDOG_INTERVAL}s, restarts after $WATCHDOG_FAILURES failures"
+echo "✅ Watchdog installed: checks $WATCHDOG_URL via socks5://127.0.0.1:$SOCKS_PORT every ${WATCHDOG_INTERVAL}s (${WATCHDOG_INTERVAL_BATTERY}s on battery), restarts after $WATCHDOG_FAILURES failures"
 echo ""
 echo "Useful commands:"
 echo "  Status:   launchctl print gui/\$(id -u)/tunnel-watchdog"
