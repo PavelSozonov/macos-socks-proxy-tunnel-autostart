@@ -1,3 +1,8 @@
 .env
 *.log
 .DS_Store
+
+# Per-person tunnel credentials and hand-out instructions (never commit)
+/id_ed25519_*
+/setup-*.md
+/server-*-notes.md
