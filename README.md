@@ -19,25 +19,30 @@ Requires only macOS built-ins (`ssh`, `launchd`, `curl`) plus an SSH key that lo
 
 ## Quick Setup
 
+**0.** On the server, create a forward-only SSH user — recommended, see
+[docs/server-setup.md](docs/server-setup.md).
+
+**1.** Create `.env` and set `SSH_USER`, `SSH_SERVER` and `SSH_KEY_FILE` in it:
+
 ```bash
-# 0. On the server: create a forward-only SSH user (recommended, see docs/server-setup.md)
-
-# 1. Create .env with your settings
 cp .env.template .env
-vim .env  # set SSH_USER, SSH_SERVER, SSH_KEY_FILE
+vim .env
+```
 
-# 2. Install everything: SOCKS tunnel + gost HTTP bridge + watchdog
+**2.** Install everything — SOCKS tunnel, gost HTTP bridge and watchdog:
+
+```bash
 make install
 ```
 
 Or pick the parts you need:
 
-```bash
-make install-tunnel     # SSH SOCKS tunnel
-make install-gost       # HTTP-to-SOCKS bridge (requires: brew install gost)
-make install-watchdog   # auto-heals a stuck tunnel (e.g. after VPN on/off)
-make help               # all targets
-```
+| Command | Installs |
+|---------|----------|
+| `make install-tunnel` | SSH SOCKS tunnel |
+| `make install-gost` | HTTP-to-SOCKS bridge (needs `brew install gost`) |
+| `make install-watchdog` | auto-healing for a stuck tunnel (e.g. after VPN on/off) |
+| `make help` | *(lists all targets)* |
 
 The underlying scripts live in `scripts/` and can also be run directly.
 
@@ -58,10 +63,11 @@ The underlying scripts live in `scripts/` and can also be run directly.
 | `SSH_KEY_FILE` | Path to SSH private key | `~/.ssh/id_ed25519` |
 | `SOCKS_PORT` | SOCKS proxy port | `8090` |
 | `GOST_HTTP_PORT` | HTTP proxy port (gost) | `8118` |
-| `WATCHDOG_INTERVAL` | Seconds between watchdog health checks | `5` |
+| `WATCHDOG_INTERVAL` | Seconds between watchdog health checks (on AC power) | `3` |
+| `WATCHDOG_INTERVAL_BATTERY` | Same, on battery power (saves energy) | `60` |
 | `WATCHDOG_URL` | URL fetched through the SOCKS proxy as a health check | `https://www.google.com/generate_204` |
 | `WATCHDOG_FAILURES` | Consecutive failures before restarting the tunnel | `2` |
-| `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `4` |
+| `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `3` |
 
 ## Usage
 
@@ -73,42 +79,31 @@ After installation, services automatically start on system boot.
 
 ### Useful Commands
 
-```bash
-make status    # state of all services
-make logs      # tail all logs
-make restart   # restart the SSH tunnel now
-make check     # run the health check through the SOCKS proxy once
-```
+| Command | Does |
+|---------|------|
+| `make status` | state of all services |
+| `make logs` | tail all logs |
+| `make restart` | restart the SSH tunnel now |
+| `make check` | run the health check through the SOCKS proxy once |
 
-Under the hood (per service):
+Under the hood every part is a launchd agent. Replace `<service>` below with
+`tunnel-proxy`, `gost-proxy` or `tunnel-watchdog`:
 
-```bash
-# --- SOCKS tunnel ---
-launchctl print gui/$(id -u)/tunnel-proxy     # status
-tail -f ~/scripts/tunnel-proxy.log             # logs
-launchctl kickstart -k gui/$(id -u)/tunnel-proxy  # restart
-launchctl kill TERM gui/$(id -u)/tunnel-proxy     # stop
-
-# --- gost HTTP proxy ---
-launchctl print gui/$(id -u)/gost-proxy       # status
-tail -f ~/scripts/gost-proxy.log              # logs
-launchctl kickstart -k gui/$(id -u)/gost-proxy   # restart
-launchctl kill TERM gui/$(id -u)/gost-proxy      # stop
-
-# --- watchdog ---
-launchctl print gui/$(id -u)/tunnel-watchdog   # status
-tail -f ~/scripts/tunnel-watchdog.log          # logs (restarts only)
-launchctl kickstart -k gui/$(id -u)/tunnel-watchdog  # restart
-```
+| Action | Command |
+|--------|---------|
+| Status | `launchctl print gui/$(id -u)/<service>` |
+| Restart | `launchctl kickstart -k gui/$(id -u)/<service>` |
+| Stop | `launchctl kill TERM gui/$(id -u)/<service>` |
+| Logs | `tail -f ~/scripts/<service>.log` |
 
 ## Uninstall
 
 ```bash
-make uninstall            # removes everything
-make uninstall-tunnel     # or individually
-make uninstall-gost
-make uninstall-watchdog
+make uninstall
 ```
+
+Or individually: `make uninstall-tunnel`, `make uninstall-gost`,
+`make uninstall-watchdog`.
 
 ## HTTP Proxy (gost)
 
@@ -117,10 +112,11 @@ make uninstall-watchdog
 It runs as a separate launchd service and can be installed/uninstalled independently from the SOCKS tunnel:
 
 ```bash
-brew install gost      # pre-requisite
-make install-gost      # install & start
-make uninstall-gost    # remove
+brew install gost
+make install-gost
 ```
+
+Remove it with `make uninstall-gost`.
 
 The proxy chain: `http://127.0.0.1:8118` -> `socks5://127.0.0.1:8090` -> SSH tunnel -> internet.
 
@@ -137,9 +133,10 @@ curl --socks5-hostname 127.0.0.1:$SOCKS_PORT -m $WATCHDOG_TIMEOUT -fsS $WATCHDOG
 After `WATCHDOG_FAILURES` consecutive failures it runs `launchctl kickstart -k` on `tunnel-proxy`. With the defaults a half-dead tunnel is back within **~15 seconds** worst case (≤3s until the next check, two checks of ≤3s each, 3s between them, ssh reconnect); after a restart the watchdog pauses for 10s so the reconnecting tunnel is not restarted again. On battery the same sequence takes up to ~2 minutes. gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
 
 ```bash
-make install-watchdog    # install & start
-make uninstall-watchdog  # remove
+make install-watchdog
 ```
+
+Remove it with `make uninstall-watchdog`.
 
 ## Browser Setup
 
