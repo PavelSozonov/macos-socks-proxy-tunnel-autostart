@@ -151,7 +151,10 @@ make install-log-cap
 ```
 
 A launchd agent checks the service logs every `LOG_CAP_INTERVAL` seconds
-(default 300) and truncates any that passed `LOG_CAP_BYTES` (default 500 MiB).
+(default 300) and truncates any that passed `LOG_CAP_BYTES` (default 100 MiB).
+Right before truncating it copies the last `LOG_CAP_KEEP_LINES` lines (default
+2000) to `<log>.prev`, so a truncation does not leave you with an empty file at
+the moment something needs diagnosing.
 
 It truncates **in place** rather than rotating, and that is deliberate: launchd
 holds these files open through `StandardOutPath` in append mode, so renaming one
@@ -163,6 +166,23 @@ a sparse hole.
 The trade-off is that history is discarded rather than archived. For a debug log
 of proxied requests that is the point — the alternative is keeping a compressed
 record of every host visited.
+
+### The bridge itself logs only failures
+
+`GOST_LOG_LEVEL` (default `warn`) is the other half of the fix, and the more
+important one. At gost's default `info` level every proxied request costs four
+log lines — one of them carrying the destination host — which measured at 125 MB
+a day of ordinary use. The level cannot be lowered with a flag (`-D`/`-DD` only
+raise it), so `install-gost.sh` writes `~/scripts/gost-proxy.yml` and runs the
+bridge with `-C`; that config is gost's own serialisation of the former flags
+plus a `log` section.
+
+At `warn` only failures remain, which measured at 7% of the volume. `warn` rather
+than `error` because this binary emits no warn-level events at all — 0 out of
+3231 lines sampled — so the tier costs nothing and stays available if a future
+version starts using it. Note that the startup `listening on …` line is `info`
+too, so it is no longer logged; `launchctl print gui/$(id -u)/gost-proxy` shows
+the state instead.
 
 ## Browser Setup
 
