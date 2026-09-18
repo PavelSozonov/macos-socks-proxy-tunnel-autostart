@@ -15,9 +15,12 @@ if [ -f "$REPO_DIR/.env" ]; then
     source "$REPO_DIR/.env"
 fi
 
-# Defaults: 500 MiB per file, checked every 5 minutes
-LOG_CAP_BYTES="${LOG_CAP_BYTES:-524288000}"
+# Defaults: 100 MiB per file, checked every 5 minutes.  100 MiB is a bound on
+# disk, not a retention policy: at the measured ~9 MB/day of warn-level output
+# it still holds about eleven days of failures.
+LOG_CAP_BYTES="${LOG_CAP_BYTES:-104857600}"
 LOG_CAP_INTERVAL="${LOG_CAP_INTERVAL:-300}"
+LOG_CAP_KEEP_LINES="${LOG_CAP_KEEP_LINES:-2000}"
 
 SCRIPTS_DIR="$HOME/scripts"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
@@ -37,18 +40,25 @@ cat > "$SCRIPTS_DIR/log-cap.sh" << 'SCRIPT'
 # the next restart.  Truncating keeps the same inode, frees the space at once,
 # and O_APPEND makes writes resume at offset 0 rather than leaving a sparse hole.
 #
-# Usage: log-cap.sh <limit-bytes> <file> [file ...]
+# Truncation discards everything at once, so the most recent lines are copied to
+# <file>.prev first.  Without that, a smaller limit means more often finding an
+# empty log right when something needs diagnosing.
+#
+# Usage: log-cap.sh <limit-bytes> <keep-lines> <file> [file ...]
 
 limit="$1"
-shift 2>/dev/null || { echo "usage: $0 <limit-bytes> <file> [file ...]" >&2; exit 64; }
+keep="$2"
+shift 2 2>/dev/null || { echo "usage: $0 <limit-bytes> <keep-lines> <file> [file ...]" >&2; exit 64; }
 case "$limit" in ''|*[!0-9]*) echo "limit must be a byte count" >&2; exit 64 ;; esac
+case "$keep" in ''|*[!0-9]*) echo "keep-lines must be a number" >&2; exit 64 ;; esac
 
 for f in "$@"; do
     [ -f "$f" ] || continue
     size=$(stat -f%z "$f" 2>/dev/null) || continue
     if [ "$size" -gt "$limit" ]; then
+        [ "$keep" -gt 0 ] && tail -n "$keep" "$f" > "$f.prev" 2>/dev/null
         : > "$f"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') truncated $f (was $size bytes, limit $limit)"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') truncated $f (was $size bytes, limit $limit; kept last $keep lines in $f.prev)"
     fi
 done
 SCRIPT
@@ -65,6 +75,7 @@ cat > "$LAUNCH_AGENTS/log-cap.plist" << EOF
     <array>
         <string>$SCRIPTS_DIR/log-cap.sh</string>
         <string>$LOG_CAP_BYTES</string>
+        <string>$LOG_CAP_KEEP_LINES</string>
         <string>$SCRIPTS_DIR/gost-proxy.log</string>
         <string>$SCRIPTS_DIR/tunnel-proxy.log</string>
         <string>$SCRIPTS_DIR/tunnel-watchdog.log</string>

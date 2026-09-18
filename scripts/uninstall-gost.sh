@@ -8,6 +8,7 @@ launchctl bootout "$DOMAIN_TARGET/gost-proxy" 2>/dev/null || true
 
 rm -f ~/Library/LaunchAgents/gost-proxy.plist
 rm -f ~/scripts/gost-proxy.sh
+rm -f ~/scripts/gost-proxy.yml
 rm -f ~/scripts/gost-proxy.log
 
 echo "✅ Done"
