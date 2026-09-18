@@ -42,6 +42,7 @@ Or pick the parts you need:
 | `make install-tunnel` | SSH SOCKS tunnel |
 | `make install-gost` | HTTP-to-SOCKS bridge (needs `brew install gost`) |
 | `make install-watchdog` | auto-healing for a stuck tunnel (e.g. after VPN on/off) |
+| `make install-log-cap` | keeps the service logs from growing without bound |
 | `make help` | *(lists all targets)* |
 
 The underlying scripts live in `scripts/` and can also be run directly.
@@ -137,6 +138,31 @@ make install-watchdog
 ```
 
 Remove it with `make uninstall-watchdog`.
+
+## Log Size Cap
+
+`gost` logs one line per proxied request — around 1.4 KB — and launchd writes it
+to a plain file with no rotation, so the bridge log grows without bound. On one
+machine it was found at **3.3 GB**, holding a line for every host visited
+through the proxy.
+
+```bash
+make install-log-cap
+```
+
+A launchd agent checks the service logs every `LOG_CAP_INTERVAL` seconds
+(default 300) and truncates any that passed `LOG_CAP_BYTES` (default 500 MiB).
+
+It truncates **in place** rather than rotating, and that is deliberate: launchd
+holds these files open through `StandardOutPath` in append mode, so renaming one
+would leave the service writing into the renamed file while the fresh one stayed
+empty until the next restart. Truncating keeps the same inode, frees the space
+immediately, and append mode makes writes resume at offset 0 instead of leaving
+a sparse hole.
+
+The trade-off is that history is discarded rather than archived. For a debug log
+of proxied requests that is the point — the alternative is keeping a compressed
+record of every host visited.
 
 ## Browser Setup
 

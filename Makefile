@@ -3,17 +3,17 @@
 
 SHELL := /bin/bash
 DOMAIN := gui/$(shell id -u)
-SERVICES := tunnel-proxy gost-proxy tunnel-watchdog
+SERVICES := tunnel-proxy gost-proxy tunnel-watchdog log-cap
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-tunnel install-gost install-watchdog \
-        uninstall uninstall-tunnel uninstall-gost uninstall-watchdog \
+.PHONY: help install install-tunnel install-gost install-watchdog install-log-cap \
+        uninstall uninstall-tunnel uninstall-gost uninstall-watchdog uninstall-log-cap \
         status logs restart check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install: install-tunnel install-gost install-watchdog ## Install everything (tunnel, gost, watchdog)
+install: install-tunnel install-gost install-watchdog install-log-cap ## Install everything (tunnel, gost, watchdog, log cap)
 
 install-tunnel: ## Install SSH SOCKS tunnel
 	@bash scripts/install-tunnel.sh
@@ -24,7 +24,10 @@ install-gost: ## Install gost HTTP-to-SOCKS bridge (requires: brew install gost)
 install-watchdog: ## Install tunnel watchdog
 	@bash scripts/install-watchdog.sh
 
-uninstall: uninstall-watchdog uninstall-gost uninstall-tunnel ## Uninstall everything
+install-log-cap: ## Install the log size cap (keeps service logs under LOG_CAP_BYTES)
+	@bash scripts/install-log-cap.sh
+
+uninstall: uninstall-log-cap uninstall-watchdog uninstall-gost uninstall-tunnel ## Uninstall everything
 
 uninstall-tunnel: ## Uninstall SSH SOCKS tunnel
 	@bash scripts/uninstall-tunnel.sh
@@ -34,6 +37,9 @@ uninstall-gost: ## Uninstall gost HTTP proxy
 
 uninstall-watchdog: ## Uninstall tunnel watchdog
 	@bash scripts/uninstall-watchdog.sh
+
+uninstall-log-cap: ## Uninstall the log size cap
+	@bash scripts/uninstall-log-cap.sh
 
 status: ## Show state of all services
 	@for s in $(SERVICES); do \
