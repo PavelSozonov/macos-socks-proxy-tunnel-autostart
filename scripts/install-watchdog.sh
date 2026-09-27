@@ -19,8 +19,13 @@ SOCKS_PORT="${SOCKS_PORT:-8090}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-3}"
 WATCHDOG_INTERVAL_BATTERY="${WATCHDOG_INTERVAL_BATTERY:-60}"
 WATCHDOG_URL="${WATCHDOG_URL:-https://www.google.com/generate_204}"
-WATCHDOG_FAILURES="${WATCHDOG_FAILURES:-2}"
-WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-3}"
+# 3 failures of 8 s, not 2 of 3 s: on a jittery link (first-hop RTT spiking
+# from ~6 ms to 375 ms, a few percent loss) a healthy tunnel routinely took
+# 1-6 s for the TLS handshake of the check, and the stricter setting restarted
+# it 10-74 times a day. A restart cannot fix the link -- the new connection
+# takes the same path -- so it only added outages of its own.
+WATCHDOG_FAILURES="${WATCHDOG_FAILURES:-3}"
+WATCHDOG_TIMEOUT="${WATCHDOG_TIMEOUT:-8}"
 
 SCRIPTS_DIR="$HOME/scripts"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"

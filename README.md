@@ -5,14 +5,14 @@ Set up an SSH SOCKS proxy on your Mac **once** and never touch it again.
 `ssh -D` is easy; keeping it alive is not. The tunnel dies on reboot, sleep, Wi-Fi changes and VPN toggles — and often stays *half-dead*: the `ssh` process is still running but no traffic goes through, so nothing restarts it. This repo turns `ssh -D` into a self-healing background service:
 
 - **Starts on login, restarts on failure** — managed by launchd, no terminal window to keep open
-- **Detects half-dead tunnels** — a watchdog sends real traffic through the proxy and restarts the tunnel when it stops passing (recovery in ~15s; slower on battery to save power)
+- **Detects half-dead tunnels** — a watchdog sends real traffic through the proxy and restarts the tunnel when it stops passing (recovery in ~35s; slower on battery to save power)
 - **Works with apps that only speak HTTP** — optional [gost](https://github.com/go-gost/gost) bridge exposes the same tunnel as an HTTP proxy (e.g. for Docker Desktop)
 - **No personal data in the repo** — server, user, key and ports live in a git-ignored `.env`
 
 ```
 app ── socks5://127.0.0.1:8090 ──▶ ssh -D ──▶ your server ──▶ internet
 app ── http://127.0.0.1:8118 ──▶ gost ──┘
-watchdog ── curl through socks5 every 3s ──▶ no response twice? restart ssh -D
+watchdog ── curl through socks5 every 3s ──▶ no response 3 times in a row? restart ssh -D
 ```
 
 Requires only macOS built-ins (`ssh`, `launchd`, `curl`) plus an SSH key that logs into your server without a password. Tested on macOS Sequoia 15+ (Apple Silicon).
@@ -67,8 +67,8 @@ The underlying scripts live in `scripts/` and can also be run directly.
 | `WATCHDOG_INTERVAL` | Seconds between watchdog health checks (on AC power) | `3` |
 | `WATCHDOG_INTERVAL_BATTERY` | Same, on battery power (saves energy) | `60` |
 | `WATCHDOG_URL` | URL fetched through the SOCKS proxy as a health check | `https://www.google.com/generate_204` |
-| `WATCHDOG_FAILURES` | Consecutive failures before restarting the tunnel | `2` |
-| `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `3` |
+| `WATCHDOG_FAILURES` | Consecutive failures before restarting the tunnel | `3` |
+| `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `8` |
 
 ## Usage
 
@@ -131,7 +131,9 @@ The watchdog is a separate launchd agent (a loop under `KeepAlive`) that every `
 curl --socks5-hostname 127.0.0.1:$SOCKS_PORT -m $WATCHDOG_TIMEOUT -fsS $WATCHDOG_URL
 ```
 
-After `WATCHDOG_FAILURES` consecutive failures it runs `launchctl kickstart -k` on `tunnel-proxy`. With the defaults a half-dead tunnel is back within **~15 seconds** worst case (≤3s until the next check, two checks of ≤3s each, 3s between them, ssh reconnect); after a restart the watchdog pauses for 10s so the reconnecting tunnel is not restarted again. On battery the same sequence takes up to ~2 minutes. gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
+After `WATCHDOG_FAILURES` consecutive failures it runs `launchctl kickstart -k` on `tunnel-proxy`. With the defaults a half-dead tunnel is back within **~35 seconds** worst case (≤3s until the next check, three checks of ≤8s each, 3s between them, ssh reconnect); after a restart the watchdog pauses for 10s so the reconnecting tunnel is not restarted again. On battery the same sequence takes up to ~3.5 minutes.
+
+The defaults trade recovery time for fewer false restarts, and that trade was measured. With 2 failures of 3 s, a link whose round-trip time jumped from ~6 ms to 375 ms at the first provider hop, with a few percent loss, made a working tunnel take 1–6 s for the check's TLS handshake, and the watchdog restarted it 10–74 times a day. A restart cannot help there — the new connection takes the same path — so every one of them was an outage of its own. If your link is clean and you want faster recovery, lower `WATCHDOG_TIMEOUT` in `.env`. gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
 
 ```bash
 make install-watchdog
