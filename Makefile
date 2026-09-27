@@ -8,7 +8,7 @@ SERVICES := tunnel-proxy gost-proxy tunnel-watchdog log-cap
 .DEFAULT_GOAL := help
 .PHONY: help install install-tunnel install-gost install-watchdog install-log-cap \
         uninstall uninstall-tunnel uninstall-gost uninstall-watchdog uninstall-log-cap \
-        status logs restart check
+        status logs restart check lint
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -59,3 +59,6 @@ restart: ## Restart the SSH tunnel now
 
 check: ## Run the health check through the SOCKS proxy once
 	@. ./.env 2>/dev/null; curl --socks5-hostname 127.0.0.1:$${SOCKS_PORT:-8090} -m $${WATCHDOG_TIMEOUT:-8} -fsS -o /dev/null $${WATCHDOG_URL:-http://www.google.com/generate_204} && echo "tunnel OK"
+
+lint: ## Run the same checks as CI (pre-commit: whitespace, file endings, shellcheck)
+	@pre-commit run --all-files

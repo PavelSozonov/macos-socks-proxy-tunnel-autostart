@@ -1,0 +1,24 @@
+---
+# Basic hygiene and shell linting. CI runs exactly this
+# (.github/workflows/ci.yml: `pre-commit run --all-files`), so keep the two in sync.
+# Versions are pinned; bump them deliberately.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Two trailing spaces are a line break in Markdown, not noise.
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-executables-have-shebangs
+      - id: check-added-large-files
+      - id: detect-private-key
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
