@@ -217,3 +217,12 @@ Both services are configured for maximum reliability via launchd.
 - `ThrottleInterval=5` — wait 5 seconds between restart attempts
 
 **Watchdog (optional, see above):** end-to-end check through the proxy that restarts a tunnel whose process is alive but no longer passes traffic.
+
+## Development
+
+CI runs [pre-commit](https://pre-commit.com) on every push and pull request: trailing whitespace, file endings, merge markers, YAML, shebangs, private keys and `shellcheck` on the scripts. Run the same checks locally with `make lint`, or once per clone install the git hook so they run on every commit:
+
+```bash
+brew install pre-commit
+pre-commit install
+```

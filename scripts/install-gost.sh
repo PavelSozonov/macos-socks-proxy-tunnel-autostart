@@ -8,6 +8,8 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Load config (optional — defaults will be used if .env is missing)
 if [ -f "$REPO_DIR/.env" ]; then
+    # .env is optional, git-ignored and absent in CI: nothing for shellcheck to follow.
+    # shellcheck source=/dev/null
     source "$REPO_DIR/.env"
 fi
 
