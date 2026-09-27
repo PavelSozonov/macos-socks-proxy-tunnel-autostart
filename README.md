@@ -66,7 +66,7 @@ The underlying scripts live in `scripts/` and can also be run directly.
 | `GOST_HTTP_PORT` | HTTP proxy port (gost) | `8118` |
 | `WATCHDOG_INTERVAL` | Seconds between watchdog health checks (on AC power) | `3` |
 | `WATCHDOG_INTERVAL_BATTERY` | Same, on battery power (saves energy) | `60` |
-| `WATCHDOG_URL` | URL fetched through the SOCKS proxy as a health check | `https://www.google.com/generate_204` |
+| `WATCHDOG_URL` | URL fetched through the SOCKS proxy as a health check | `http://www.google.com/generate_204` |
 | `WATCHDOG_FAILURES` | Consecutive failures before restarting the tunnel | `3` |
 | `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `8` |
 
@@ -133,7 +133,11 @@ curl --socks5-hostname 127.0.0.1:$SOCKS_PORT -m $WATCHDOG_TIMEOUT -fsS $WATCHDOG
 
 After `WATCHDOG_FAILURES` consecutive failures it runs `launchctl kickstart -k` on `tunnel-proxy`. With the defaults a half-dead tunnel is back within **~35 seconds** worst case (≤3s until the next check, three checks of ≤8s each, 3s between them, ssh reconnect); after a restart the watchdog pauses for 10s so the reconnecting tunnel is not restarted again. On battery the same sequence takes up to ~3.5 minutes.
 
-The defaults trade recovery time for fewer false restarts, and that trade was measured. With 2 failures of 3 s, a link whose round-trip time jumped from ~6 ms to 375 ms at the first provider hop, with a few percent loss, made a working tunnel take 1–6 s for the check's TLS handshake, and the watchdog restarted it 10–74 times a day. A restart cannot help there — the new connection takes the same path — so every one of them was an outage of its own. If your link is clean and you want faster recovery, lower `WATCHDOG_TIMEOUT` in `.env`. gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
+The defaults trade recovery time for fewer false restarts, and that trade was measured. With 2 failures of 3 s, a link whose round-trip time jumped from ~6 ms to 375 ms at the first provider hop, with a few percent loss, made a working tunnel take 1–6 s for the check's TLS handshake, and the watchdog restarted it 10–74 times a day. A restart cannot help there — the new connection takes the same path — so every one of them was an outage of its own. If your link is clean and you want faster recovery, lower `WATCHDOG_TIMEOUT` in `.env`.
+
+The check uses plain HTTP, not HTTPS, for the same reason: TLS adds one more round trip through the tunnel to every check, and on a jittery link every round trip is another chance to miss the timeout. Measured through the same tunnel, the 90th percentile was 0.76 s over HTTP against 1.55 s over HTTPS, while switching the target from Google to Cloudflare changed nothing. Plain HTTP costs no privacy here: the request travels inside ssh up to your server, and the check still exercises the whole path — SOCKS, ssh, server, internet.
+
+gost does not need a restart: it is stateless and opens a fresh connection to the SOCKS port per request, so it picks up the new tunnel automatically. Successful checks are not logged; failures and restarts go to `~/scripts/tunnel-watchdog.log`. If `tunnel-proxy` is not loaded, the watchdog does nothing.
 
 ```bash
 make install-watchdog
