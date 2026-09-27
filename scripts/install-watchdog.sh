@@ -18,7 +18,12 @@ fi
 SOCKS_PORT="${SOCKS_PORT:-8090}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-3}"
 WATCHDOG_INTERVAL_BATTERY="${WATCHDOG_INTERVAL_BATTERY:-60}"
-WATCHDOG_URL="${WATCHDOG_URL:-https://www.google.com/generate_204}"
+# Plain HTTP on purpose: TLS adds a round trip through the tunnel to every check,
+# and on a jittery link each round trip is a chance to miss the timeout. The
+# request is still encrypted up to the server (it rides inside ssh), and the
+# check still proves the whole path. Measured through the same tunnel: p90
+# 0.76 s over HTTP against 1.55 s over HTTPS; the target site made no difference.
+WATCHDOG_URL="${WATCHDOG_URL:-http://www.google.com/generate_204}"
 # 3 failures of 8 s, not 2 of 3 s: on a jittery link (first-hop RTT spiking
 # from ~6 ms to 375 ms, a few percent loss) a healthy tunnel routinely took
 # 1-6 s for the TLS handshake of the check, and the stricter setting restarted
