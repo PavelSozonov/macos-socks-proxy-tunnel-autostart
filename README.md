@@ -6,7 +6,7 @@ Set up an SSH SOCKS proxy on your Mac **once** and never touch it again.
 
 - **Starts on login, restarts on failure** — managed by launchd, no terminal window to keep open
 - **Detects half-dead tunnels** — a watchdog sends real traffic through the proxy and restarts the tunnel when it stops passing (recovery in ~35s; slower on battery to save power)
-- **Works with apps that only speak HTTP** — optional [gost](https://github.com/go-gost/gost) bridge exposes the same tunnel as an HTTP proxy (e.g. for Docker Desktop)
+- **Works with apps that only speak HTTP** — a [gost](https://github.com/go-gost/gost) bridge exposes the same tunnel as an HTTP proxy (e.g. for Docker Desktop)
 - **No personal data in the repo** — server, user, key and ports live in a git-ignored `.env`
 
 ```
@@ -15,7 +15,7 @@ app ── http://127.0.0.1:8118 ──▶ gost ──┘
 watchdog ── curl through socks5 every 3s ──▶ no response 3 times in a row? restart ssh -D
 ```
 
-Requires only macOS built-ins (`ssh`, `launchd`, `curl`) plus an SSH key that logs into your server without a password. Tested on macOS Sequoia 15+ (Apple Silicon).
+Requires macOS built-ins (`ssh`, `launchd`, `curl`), an SSH key that logs into your server without a password, and one Homebrew package: `brew install gost` for the HTTP bridge. Tested on macOS Sequoia 15+ (Apple Silicon).
 
 ## Quick Setup
 
@@ -29,18 +29,21 @@ cp .env.template .env
 vim .env
 ```
 
-**2.** Install everything — SOCKS tunnel, gost HTTP bridge and watchdog:
+**2.** Install gost, then everything else — SOCKS tunnel, gost HTTP bridge, watchdog and log cap:
 
 ```bash
+brew install gost
 make install
 ```
+
+`make install` checks for gost before touching anything and stops with a reminder to run `brew install gost` if it is missing, so a forgotten step never leaves a half-installed setup.
 
 Or pick the parts you need:
 
 | Command | Installs |
 |---------|----------|
 | `make install-tunnel` | SSH SOCKS tunnel |
-| `make install-gost` | HTTP-to-SOCKS bridge (needs `brew install gost`) |
+| `make install-gost` | HTTP-to-SOCKS bridge (needs `brew install gost` first) |
 | `make install-watchdog` | auto-healing for a stuck tunnel (e.g. after VPN on/off) |
 | `make install-log-cap` | keeps the service logs from growing without bound |
 | `make help` | *(lists all targets)* |
@@ -53,7 +56,7 @@ The underlying scripts live in `scripts/` and can also be run directly.
 
 - SSH key configured for passwordless connection to server — ideally a dedicated account that can only forward ports, see [docs/server-setup.md](docs/server-setup.md)
 - Default SSH key path: `~/.ssh/id_ed25519`
-- For HTTP proxy: `brew install gost`
+- `brew install gost` for the HTTP proxy — the only non-built-in dependency. `make install` and `make install-gost` refuse to run without it; `make install-tunnel` and `make install-watchdog` alone do not need it
 
 ## Configuration (.env)
 
@@ -96,6 +99,30 @@ Under the hood every part is a launchd agent. Replace `<service>` below with
 | Restart | `launchctl kickstart -k gui/$(id -u)/<service>` |
 | Stop | `launchctl kill TERM gui/$(id -u)/<service>` |
 | Logs | `tail -f ~/scripts/<service>.log` |
+
+## Moving to a New Mac
+
+Migration Assistant carries the services over: `~/scripts`, the launchd agents in
+`~/Library/LaunchAgents`, `~/.ssh` and this repo with its `.env` all live in your
+home folder, so the SOCKS tunnel and the watchdog come up on the first login of
+the new machine. The one thing that does not migrate is `gost` — it is a Homebrew
+binary outside your home folder, and `~/scripts/gost-proxy.sh` points at it by
+absolute path. Until you reinstall it, port 8118 refuses connections and
+`~/scripts/gost-proxy.log` fills with `gost: not found`.
+
+Fix it by installing gost and regenerating the bridge, which also refreshes the
+path in case the old Mac was Intel (`/usr/local/bin`) and the new one is Apple
+Silicon (`/opt/homebrew/bin`):
+
+```bash
+brew install gost
+make install-gost
+make status
+```
+
+Do not put a different proxy on 8118 (Privoxy, for example): it would take the
+port gost needs and, with its default config, send traffic straight to the
+internet instead of through the tunnel.
 
 ## Uninstall
 
