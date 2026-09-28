@@ -148,6 +148,43 @@ Remove it with `make uninstall-http-proxy`.
 
 The proxy chain: `http://127.0.0.1:8118` -> `socks5://127.0.0.1:8090` -> SSH tunnel -> internet.
 
+### gost crashes on M5 Pro / M5 Max
+
+gost 3.3.0 from Homebrew, the current release as of September 2026, dies at
+startup on Macs with an Apple M5 Pro or M5 Max. Its `go-m1cpu` 0.1.6 dependency
+reads a CPU-frequency property from IOKit that these chips do not expose and
+dereferences the missing value. The crash happens in package init, before any
+flag or config is read, so it looks the same from launchd and from a terminal:
+
+```
+SIGSEGV: segmentation violation
+signal arrived during cgo execution
+github.com/shoenig/go-m1cpu._Cfunc_initialize()
+```
+
+A base M5 still has the property, so the same binary runs there. `brew reinstall
+gost` does not help: the bottle is the same. The fix (go-m1cpu 0.2.1) is in the
+gost nightly builds since 2026-09-13 and not yet in a tagged release.
+
+`make install` and `make install-http-proxy` run `gost -V` before installing
+anything and stop with these instructions if it crashes. To fix it, replace the
+Homebrew binary with a nightly build:
+
+```bash
+brew uninstall gost
+cd ~/Downloads
+curl -sSLO https://github.com/go-gost/gost/releases/download/v3.3.1-nightly.20260922/gost_3.3.1-nightly.20260922_darwin_arm64.tar.gz
+tar xzf gost_3.3.1-nightly.20260922_darwin_arm64.tar.gz gost
+mv gost /opt/homebrew/bin/gost
+/opt/homebrew/bin/gost -V      # must print the version, not crash
+make install-http-proxy
+```
+
+Newer nightlies are on the [releases page](https://github.com/go-gost/gost/releases)
+(`darwin_arm64` archive). Homebrew will not touch a binary it did not install, so
+`brew upgrade` leaves it alone. Once Homebrew ships a release newer than 3.3.0,
+switch back with `rm /opt/homebrew/bin/gost && brew install gost`.
+
 ## Watchdog
 
 launchd only restarts the tunnel when the `ssh` process **exits**. After toggling a VPN (or otherwise changing routes) the process often stays alive while the connection is half-dead, so SOCKS traffic silently stops and launchd sees nothing wrong.
