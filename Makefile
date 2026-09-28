@@ -6,19 +6,30 @@ DOMAIN := gui/$(shell id -u)
 SERVICES := tunnel-proxy gost-proxy tunnel-watchdog log-cap
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-tunnel install-gost install-watchdog install-log-cap \
+.PHONY: help check-gost install install-tunnel install-gost install-watchdog install-log-cap \
         uninstall uninstall-tunnel uninstall-gost uninstall-watchdog uninstall-log-cap \
         status logs restart check lint
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install: install-tunnel install-gost install-watchdog install-log-cap ## Install everything (tunnel, gost, watchdog, log cap)
+install: check-gost install-tunnel install-gost install-watchdog install-log-cap ## Install everything (tunnel, gost, watchdog, log cap)
+
+# Checked before anything is installed, so a missing gost never leaves a
+# half-installed setup (tunnel present, HTTP bridge and watchdog absent).
+check-gost: ## Verify that gost is installed (brew install gost)
+	@command -v gost >/dev/null 2>&1 || [ -x /opt/homebrew/bin/gost ] || [ -x /usr/local/bin/gost ] || { \
+		echo "❌ gost is not installed. It provides the HTTP proxy on port $${GOST_HTTP_PORT:-8118} and is required."; \
+		echo "   Install it, then run make again:"; \
+		echo ""; \
+		echo "       brew install gost"; \
+		echo ""; \
+		exit 1; }
 
 install-tunnel: ## Install SSH SOCKS tunnel
 	@bash scripts/install-tunnel.sh
 
-install-gost: ## Install gost HTTP-to-SOCKS bridge (requires: brew install gost)
+install-gost: check-gost ## Install gost HTTP-to-SOCKS bridge (requires: brew install gost)
 	@bash scripts/install-gost.sh
 
 install-watchdog: ## Install tunnel watchdog
