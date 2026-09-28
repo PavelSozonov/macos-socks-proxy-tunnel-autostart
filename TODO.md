@@ -37,3 +37,30 @@ Relaxing the watchdog removed the false restarts; it did not remove the stalls.
 the same watchdog check against each SOCKS port, counting failed checks and the
 check's latency distribution. Switch only if the QUIC tunnel fails measurably
 less often on that link.
+
+## Remove the gost nightly workaround once Homebrew ships a fixed release
+
+**Status: waiting on upstream. Homebrew has gost 3.3.0; nothing to do until a
+newer version appears there.**
+
+**What is in the repo now.** gost 3.3.0 crashes at startup on Apple M5 Pro /
+M5 Max (go-m1cpu 0.1.6, see README "gost crashes on M5 Pro / M5 Max"). The
+workaround is a nightly build installed by hand in place of the Homebrew one.
+`scripts/check-gost.sh` runs `gost -V` before installing and prints the nightly
+instructions when it crashes; the README section repeats them.
+
+**When a release newer than 3.3.0 lands in Homebrew:**
+
+1. Confirm the fix is in: its `go.mod` must list `github.com/shoenig/go-m1cpu`
+   at v0.2.1 or newer (master already does). Then verify on an M5 Pro or M5 Max
+   that `brew install gost && gost -V` prints the version instead of a
+   `SIGSEGV` in `go-m1cpu._Cfunc_initialize`.
+2. Keep the `gost -V` check in `scripts/check-gost.sh` — it is cheap and would
+   catch the next crash-at-init — but replace the nightly instructions in its
+   crash message with a plain "run brew upgrade gost, then retry".
+3. Drop the README subsection "gost crashes on M5 Pro / M5 Max", or shrink it
+   to one line saying the bug was in 3.3.0 and is fixed from the new version
+   on, so people who pinned the nightly know to switch back with
+   `rm /opt/homebrew/bin/gost && brew install gost`.
+4. Anyone running the nightly should do that switch; it is not tracked by
+   Homebrew, so `brew upgrade` will not replace it.
