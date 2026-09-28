@@ -33,22 +33,9 @@ mkdir -p "$SCRIPTS_DIR" "$LAUNCH_AGENTS"
 
 echo "📦 Installing HTTP proxy (gost)..."
 
-# Find gost in common locations
-find_gost() {
-    command -v gost 2>/dev/null && return
-    for p in \
-        "/opt/homebrew/bin/gost" \
-        "/usr/local/bin/gost"; do
-        [ -x "$p" ] && echo "$p" && return
-    done
-}
-
-GOST_PATH=$(find_gost)
-
-if [ -z "$GOST_PATH" ] || [ ! -x "$GOST_PATH" ]; then
-    echo "❌ gost not found. Install it first: brew install gost"
-    exit 1
-fi
+# Locate gost and make sure it actually starts on this Mac (gost 3.3.0 crashes
+# on M5 Pro / M5 Max); check-gost.sh explains what to do when it does not.
+GOST_PATH=$(bash "$REPO_DIR/scripts/check-gost.sh") || exit 1
 
 # The log level cannot be lowered with a flag (-D/-DD only raise it), so the
 # bridge is configured with a file.  This config is the -O yaml serialisation of
