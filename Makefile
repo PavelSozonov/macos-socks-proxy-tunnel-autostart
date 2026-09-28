@@ -6,14 +6,14 @@ DOMAIN := gui/$(shell id -u)
 SERVICES := tunnel-proxy gost-proxy tunnel-watchdog log-cap
 
 .DEFAULT_GOAL := help
-.PHONY: help check-gost install install-tunnel install-gost install-watchdog install-log-cap \
-        uninstall uninstall-tunnel uninstall-gost uninstall-watchdog uninstall-log-cap \
+.PHONY: help check-gost install install-tunnel install-http-proxy install-watchdog install-log-cap \
+        uninstall uninstall-tunnel uninstall-http-proxy uninstall-watchdog uninstall-log-cap \
         status logs restart check lint
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install: check-gost install-tunnel install-gost install-watchdog install-log-cap ## Install everything (tunnel, gost, watchdog, log cap)
+install: check-gost install-tunnel install-http-proxy install-watchdog install-log-cap ## Install everything (tunnel, HTTP proxy, watchdog, log cap)
 
 # Checked before anything is installed, so a missing gost never leaves a
 # half-installed setup (tunnel present, HTTP bridge and watchdog absent).
@@ -29,8 +29,8 @@ check-gost: ## Verify that gost is installed (brew install gost)
 install-tunnel: ## Install SSH SOCKS tunnel
 	@bash scripts/install-tunnel.sh
 
-install-gost: check-gost ## Install gost HTTP-to-SOCKS bridge (requires: brew install gost)
-	@bash scripts/install-gost.sh
+install-http-proxy: check-gost ## Install the HTTP proxy (gost HTTP-to-SOCKS bridge; requires: brew install gost)
+	@bash scripts/install-http-proxy.sh
 
 install-watchdog: ## Install tunnel watchdog
 	@bash scripts/install-watchdog.sh
@@ -38,13 +38,13 @@ install-watchdog: ## Install tunnel watchdog
 install-log-cap: ## Install the log size cap (keeps service logs under LOG_CAP_BYTES)
 	@bash scripts/install-log-cap.sh
 
-uninstall: uninstall-log-cap uninstall-watchdog uninstall-gost uninstall-tunnel ## Uninstall everything
+uninstall: uninstall-log-cap uninstall-watchdog uninstall-http-proxy uninstall-tunnel ## Uninstall everything
 
 uninstall-tunnel: ## Uninstall SSH SOCKS tunnel
 	@bash scripts/uninstall-tunnel.sh
 
-uninstall-gost: ## Uninstall gost HTTP proxy
-	@bash scripts/uninstall-gost.sh
+uninstall-http-proxy: ## Uninstall the HTTP proxy (gost)
+	@bash scripts/uninstall-http-proxy.sh
 
 uninstall-watchdog: ## Uninstall tunnel watchdog
 	@bash scripts/uninstall-watchdog.sh

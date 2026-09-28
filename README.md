@@ -43,7 +43,7 @@ Or pick the parts you need:
 | Command | Installs |
 |---------|----------|
 | `make install-tunnel` | SSH SOCKS tunnel |
-| `make install-gost` | HTTP-to-SOCKS bridge (needs `brew install gost` first) |
+| `make install-http-proxy` | HTTP-to-SOCKS bridge (needs `brew install gost` first) |
 | `make install-watchdog` | auto-healing for a stuck tunnel (e.g. after VPN on/off) |
 | `make install-log-cap` | keeps the service logs from growing without bound |
 | `make help` | *(lists all targets)* |
@@ -56,7 +56,7 @@ The underlying scripts live in `scripts/` and can also be run directly.
 
 - SSH key configured for passwordless connection to server — ideally a dedicated account that can only forward ports, see [docs/server-setup.md](docs/server-setup.md)
 - Default SSH key path: `~/.ssh/id_ed25519`
-- `brew install gost` for the HTTP proxy — the only non-built-in dependency. `make install` and `make install-gost` refuse to run without it; `make install-tunnel` and `make install-watchdog` alone do not need it
+- `brew install gost` for the HTTP proxy — the only non-built-in dependency. `make install` and `make install-http-proxy` refuse to run without it; `make install-tunnel` and `make install-watchdog` alone do not need it
 
 ## Configuration (.env)
 
@@ -116,7 +116,7 @@ Silicon (`/opt/homebrew/bin`):
 
 ```bash
 brew install gost
-make install-gost
+make install-http-proxy
 make status
 ```
 
@@ -130,7 +130,7 @@ internet instead of through the tunnel.
 make uninstall
 ```
 
-Or individually: `make uninstall-tunnel`, `make uninstall-gost`,
+Or individually: `make uninstall-tunnel`, `make uninstall-http-proxy`,
 `make uninstall-watchdog`.
 
 ## HTTP Proxy (gost)
@@ -141,10 +141,10 @@ It runs as a separate launchd service and can be installed/uninstalled independe
 
 ```bash
 brew install gost
-make install-gost
+make install-http-proxy
 ```
 
-Remove it with `make uninstall-gost`.
+Remove it with `make uninstall-http-proxy`.
 
 The proxy chain: `http://127.0.0.1:8118` -> `socks5://127.0.0.1:8090` -> SSH tunnel -> internet.
 
@@ -206,7 +206,7 @@ record of every host visited.
 important one. At gost's default `info` level every proxied request costs four
 log lines — one of them carrying the destination host — which measured at 125 MB
 a day of ordinary use. The level cannot be lowered with a flag (`-D`/`-DD` only
-raise it), so `install-gost.sh` writes `~/scripts/gost-proxy.yml` and runs the
+raise it), so `install-http-proxy.sh` writes `~/scripts/gost-proxy.yml` and runs the
 bridge with `-C`; that config is gost's own serialisation of the former flags
 plus a `log` section.
 
