@@ -15,16 +15,10 @@ help: ## Show this help
 
 install: check-gost install-tunnel install-http-proxy install-watchdog install-log-cap ## Install everything (tunnel, HTTP proxy, watchdog, log cap)
 
-# Checked before anything is installed, so a missing gost never leaves a
-# half-installed setup (tunnel present, HTTP bridge and watchdog absent).
-check-gost: ## Verify that gost is installed (brew install gost)
-	@command -v gost >/dev/null 2>&1 || [ -x /opt/homebrew/bin/gost ] || [ -x /usr/local/bin/gost ] || { \
-		echo "❌ gost is not installed. It provides the HTTP proxy on port $${GOST_HTTP_PORT:-8118} and is required."; \
-		echo "   Install it, then run make again:"; \
-		echo ""; \
-		echo "       brew install gost"; \
-		echo ""; \
-		exit 1; }
+# Checked before anything is installed, so a missing or crashing gost never
+# leaves a half-installed setup (tunnel present, HTTP bridge and watchdog absent).
+check-gost: ## Verify that gost is installed and starts (brew install gost)
+	@bash scripts/check-gost.sh >/dev/null
 
 install-tunnel: ## Install SSH SOCKS tunnel
 	@bash scripts/install-tunnel.sh
