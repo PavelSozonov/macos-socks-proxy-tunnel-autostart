@@ -33,7 +33,7 @@ Standards (`~/projects/aicolab/docs/standards/`):
 
 | Standard | Gist |
 | --- | --- |
-| `commits.md` | Conventional Commits; English subject, Russian body; no trailers and no tool attribution anywhere |
+| `commits.md` | Conventional Commits; English subject, Russian body (English in a public repository); no trailers and no tool attribution anywhere |
 | `language.md` | English for anything that becomes an identifier, Russian for anything that explains |
 | `ownership.md` | one owner per file, host and name; an ownership dispute is settled, not worked around |
 | `todo-file.md` | one `TODO.md` at the repository root, a snapshot of what is owed; done items are deleted, what outlives a task moves; warnings and deprecations are recorded at once and triaged by priority |
