@@ -64,3 +64,55 @@ instructions when it crashes; the README section repeats them.
    `rm /opt/homebrew/bin/gost && brew install gost`.
 4. Anyone running the nightly should do that switch; it is not tracked by
    Homebrew, so `brew upgrade` will not replace it.
+
+## Versioning: semantic versions, a `--version` and a changelog
+
+**Status: planned.**
+
+**Why.** There are no tags or releases today: an installed copy is whatever
+`main` was checked out when `make install` ran, and nothing on the Mac says
+which one. A bug report cannot name a version, and an update has nothing to
+compare against.
+
+**What.**
+
+- Semantic versions (`MAJOR.MINOR.PATCH`) with annotated git tags `vX.Y.Z` on
+  `main`; the first tag marks the current behaviour as `v1.0.0`.
+- A `VERSION` file in the repo, kept equal to the latest tag; a CI check fails
+  a release tag that does not match it.
+- The installers write the version into the generated `~/scripts/*.sh` and
+  into a small `~/scripts/tunnel-version` file; `make version` (and
+  `--version` on the scripts that take arguments) prints the repo version and
+  the installed one, so a mismatch is visible.
+- `CHANGELOG.md` in the Keep a Changelog format; every release section lists
+  user-visible changes and anything that needs a manual step (a new `.env`
+  variable, a new Homebrew dependency).
+
+## `make update`: update an installed copy to the latest release
+
+**Status: planned, after versioning.**
+
+**Why.** Updating today means `git pull` and re-running the right `make
+install-*` targets by hand, and remembering which parts were installed. A
+partly applied update can leave the tunnel down.
+
+**What.**
+
+1. `make update` fetches tags, finds the latest release newer than the
+   installed version (from `~/scripts/tunnel-version`) and stops with a
+   message if there is none or the working tree has local changes.
+2. It checks out that tag and re-runs the installers only for the services
+   that are installed now (as `make status` sees them), so it never adds a
+   part the user did not choose.
+3. `.env`, the SSH key and the server account are left as they are; new
+   `.env` variables come with defaults and are listed from `CHANGELOG.md`.
+4. Before touching anything it copies the current `~/scripts/*.sh` and the
+   `~/Library/LaunchAgents/*.plist` of this repo to a backup directory.
+   After reinstalling it runs the same check as `make check`; if the tunnel
+   does not pass within the watchdog window it restores the backup, reloads
+   the LaunchAgents, checks out the previous tag and reports the failure.
+5. `make update TAG=vX.Y.Z` pins a specific release (also the way to roll
+   back on purpose).
+
+**Open.** Whether to check for a newer release on its own (for example, a
+weekly notice in the watchdog log) or only when the user runs `make update`.
