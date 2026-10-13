@@ -1,0 +1,21 @@
+# Ownership and review of the sensitive paths of this repository.
+# "Require review from Code Owners" is deliberately off in the branch
+# protection: there is a single maintainer, and GitHub does not let an
+# author approve their own pull request. This file documents ownership,
+# requests a review on pull requests from outside contributors, and is the
+# hook for turning the requirement on once a second reviewer appears.
+#
+# The last matching line wins; the owner is the same everywhere.
+
+# Agent skills, commands and plugins
+.claude/ @PavelSozonov
+.claude-plugin/ @PavelSozonov
+**/SKILL.md @PavelSozonov
+
+# CI, dependency updates and this file
+/.github/ @PavelSozonov
+
+# Installers that run with the owner's privileges, and the env template
+/scripts/ @PavelSozonov
+/Makefile @PavelSozonov
+/.env.template @PavelSozonov
