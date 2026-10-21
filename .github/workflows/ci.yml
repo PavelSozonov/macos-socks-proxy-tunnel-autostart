@@ -13,6 +13,9 @@ jobs:
   pre-commit:
     name: Lint (pre-commit)
     runs-on: ubuntu-latest
+    # A hung network call must not hold the runner for the 6-hour default;
+    # the longest of the last 25 runs took 50 s.
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,6 +40,8 @@ jobs:
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    # The longest of the last 16 runs took 12 s.
+    timeout-minutes: 10
     env:
       GITLEAKS_VERSION: "8.30.0"
     steps:
@@ -51,8 +56,8 @@ jobs:
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
           archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           cd /tmp
-          curl -fsSLO "${base}/${archive}"
-          curl -fsSLO "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          curl -fsSLO --connect-timeout 10 --max-time 120 --retry 3 "${base}/${archive}"
+          curl -fsSLO --connect-timeout 10 --max-time 60 --retry 3 "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
           grep " ${archive}\$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -
           tar -xzf "${archive}" gitleaks
 
