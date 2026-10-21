@@ -116,3 +116,7 @@ partly applied update can leave the tunnel down.
 
 **Open.** Whether to check for a newer release on its own (for example, a
 weekly notice in the watchdog log) or only when the user runs `make update`.
+
+## Pin the gitleaks checksum in CI
+
+The `Secret scan (gitleaks)` job verifies the archive against the checksums file of the same release, so a swapped release would pass together with its own checksums. Pin the archive sha256 in the workflow `env`, and raise the version (CI installs 8.30.0, the pre-commit hook runs 8.30.1). Found in review of #11 (Minor).
