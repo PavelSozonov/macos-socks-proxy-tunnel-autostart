@@ -9,6 +9,9 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Only versions at least 14 days old; security updates are not delayed.
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 1
     groups:
       github-actions:
@@ -25,6 +28,9 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Only versions at least 14 days old; security updates are not delayed.
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 1
     labels:
       - dependencies
