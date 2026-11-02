@@ -14,6 +14,8 @@ fi
 SOCKS_PORT="${SOCKS_PORT:-8090}"
 SSH_KEY_FILE="${SSH_KEY_FILE:-~/.ssh/id_ed25519}"
 SSH_KEY_FILE="${SSH_KEY_FILE/#\~/$HOME}"
+SSH_JUMP="${SSH_JUMP:-}"
+SSH_JUMP_HOST_KEY_SHA256="${SSH_JUMP_HOST_KEY_SHA256:-}"
 
 SCRIPTS_DIR="$HOME/scripts"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
@@ -27,6 +29,54 @@ if [ -z "$SSH_USER" ] || [ -z "$SSH_SERVER" ]; then
 else
 echo "📦 Installing SOCKS proxy tunnel..."
 
+if [ -n "$SSH_JUMP" ]; then
+    if [[ ! "$SSH_JUMP" =~ ^[a-z_][a-z0-9_-]*@[A-Za-z0-9.-]+$ ]] ||
+       [[ ! "$SSH_JUMP_HOST_KEY_SHA256" =~ ^SHA256:[A-Za-z0-9+/]+$ ]]; then
+        echo "SSH_JUMP must be user@host and SSH_JUMP_HOST_KEY_SHA256 must be a SHA256 fingerprint" >&2
+        exit 1
+    fi
+    JUMP_HOST="${SSH_JUMP#*@}"
+    # Verify before replacing the running service. A key mismatch leaves the
+    # existing tunnel untouched; ssh-keyscan alone is not authentication.
+    JUMP_HOST_KEY="$(ssh-keyscan -T 5 -t ed25519 "$JUMP_HOST" 2>/dev/null | awk '$2 == "ssh-ed25519" { print; exit }')"
+    if [ -z "$JUMP_HOST_KEY" ]; then
+        echo "Could not read the jump host ED25519 key" >&2
+        exit 1
+    fi
+    JUMP_FINGERPRINT="$(printf '%s\n' "$JUMP_HOST_KEY" | ssh-keygen -lf - | awk '{ print $2 }')"
+    if [ "$JUMP_FINGERPRINT" != "$SSH_JUMP_HOST_KEY_SHA256" ]; then
+        echo "Jump host key fingerprint mismatch; tunnel left unchanged" >&2
+        exit 1
+    fi
+    printf '%s\n' "$JUMP_HOST_KEY" > "$SCRIPTS_DIR/tunnel-jump-known-hosts"
+    chmod 600 "$SCRIPTS_DIR/tunnel-jump-known-hosts"
+
+    cat > "$SCRIPTS_DIR/tunnel-proxy-jump.sh" << 'JUMP_EOF'
+#!/bin/sh
+# Only the SSH transport to the destination travels through the jump host.
+exec ssh -q -i "SSH_KEY_PLACEHOLDER" \
+    -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="JUMP_KNOWN_HOSTS_PLACEHOLDER" \
+    -o ConnectTimeout=10 -o ConnectionAttempts=1 \
+    -W "$1:$2" SSH_JUMP_PLACEHOLDER
+JUMP_EOF
+    sed -i '' "s|SSH_KEY_PLACEHOLDER|$SSH_KEY_FILE|g" "$SCRIPTS_DIR/tunnel-proxy-jump.sh"
+    sed -i '' "s|JUMP_KNOWN_HOSTS_PLACEHOLDER|$SCRIPTS_DIR/tunnel-jump-known-hosts|g" "$SCRIPTS_DIR/tunnel-proxy-jump.sh"
+    sed -i '' "s|SSH_JUMP_PLACEHOLDER|$SSH_JUMP|g" "$SCRIPTS_DIR/tunnel-proxy-jump.sh"
+    chmod 700 "$SCRIPTS_DIR/tunnel-proxy-jump.sh"
+
+    cat > "$SCRIPTS_DIR/tunnel-proxy.sh" << 'SCRIPT_EOF'
+#!/bin/sh
+exec ssh -D SOCKS_PORT_PLACEHOLDER -q -C -N \
+    -o ServerAliveInterval=30 -o ServerAliveCountMax=2 \
+    -o ExitOnForwardFailure=yes -o TCPKeepAlive=yes \
+    -o ConnectTimeout=10 -o ConnectionAttempts=1 \
+    -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+    -o "ProxyCommand=JUMP_HELPER_PLACEHOLDER %h %p" \
+    -i "SSH_KEY_PLACEHOLDER" SSH_USER_PLACEHOLDER@SSH_SERVER_PLACEHOLDER
+SCRIPT_EOF
+    sed -i '' "s|JUMP_HELPER_PLACEHOLDER|$SCRIPTS_DIR/tunnel-proxy-jump.sh|g" "$SCRIPTS_DIR/tunnel-proxy.sh"
+else
 cat > "$SCRIPTS_DIR/tunnel-proxy.sh" << 'SCRIPT_EOF'
 #!/bin/sh
 # Resilient SSH tunnel with auto-recovery
@@ -45,6 +95,7 @@ exec ssh -D SOCKS_PORT_PLACEHOLDER -q -C -N \
     -i "SSH_KEY_PLACEHOLDER" \
     SSH_USER_PLACEHOLDER@SSH_SERVER_PLACEHOLDER
 SCRIPT_EOF
+fi
 
 # Replace placeholders with actual values
 sed -i '' "s|SOCKS_PORT_PLACEHOLDER|$SOCKS_PORT|g" "$SCRIPTS_DIR/tunnel-proxy.sh"

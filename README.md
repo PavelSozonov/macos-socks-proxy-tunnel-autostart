@@ -65,6 +65,8 @@ The underlying scripts live in `scripts/` and can also be run directly.
 | `SSH_USER` | SSH username | *(required for tunnel)* |
 | `SSH_SERVER` | Server address | *(required for tunnel)* |
 | `SSH_KEY_FILE` | Path to SSH private key | `~/.ssh/id_ed25519` |
+| `SSH_JUMP` | Optional SSH relay as `user@host`; uses the same client key for both SSH hops | unset |
+| `SSH_JUMP_HOST_KEY_SHA256` | Verified ED25519 fingerprint of the relay; required with `SSH_JUMP` | unset |
 | `SOCKS_PORT` | SOCKS proxy port | `8090` |
 | `GOST_HTTP_PORT` | HTTP proxy port (gost) | `8118` |
 | `WATCHDOG_INTERVAL` | Seconds between watchdog health checks (on AC power) | `3` |
@@ -72,6 +74,12 @@ The underlying scripts live in `scripts/` and can also be run directly.
 | `WATCHDOG_URL` | URL fetched through the SOCKS proxy as a health check | `http://www.google.com/generate_204` |
 | `WATCHDOG_FAILURES` | Consecutive failures before restarting the tunnel | `3` |
 | `WATCHDOG_TIMEOUT` | Health check timeout in seconds | `8` |
+
+To switch an existing tunnel to an SSH relay, update the client checkout,
+set `SSH_JUMP` and `SSH_JUMP_HOST_KEY_SHA256` in `.env`, then run
+`make install-tunnel`. The installer checks the relay's host key before it
+replaces or restarts the service. The destination's existing `known_hosts`
+entry remains in use. The SOCKS and HTTP proxy ports stay the same.
 
 ## Usage
 
